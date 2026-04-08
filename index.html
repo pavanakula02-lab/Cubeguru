@@ -1041,7 +1041,7 @@ const DEFAULT_SETTINGS = {
   tagline:      "Class Management System",
   primaryColor: "#2563eb",
   accentColor:  "#d4a017",
-  currency:     CUR()+" ",
+  currency:     "Rs.",
   trainerLabel: "Trainer",
   trainersLabel:"Trainers",
   studentLabel: "Student",
@@ -1312,7 +1312,7 @@ function saveInstSettings(){
   instSettings.trainersLabel = document.getElementById("inst_trainersLabel").value.trim() || "Trainers";
   instSettings.studentLabel  = document.getElementById("inst_studentLabel").value.trim() || "Student";
   instSettings.studentsLabel = document.getElementById("inst_studentsLabel").value.trim() || "Students";
-  instSettings.currency      = (document.getElementById("inst_currency").value.trim() || CUR()+" ").replace(/[0-9,]/g,"").trim() || CUR()+" ";
+  instSettings.currency      = (document.getElementById("inst_currency").value.trim() || "Rs.").replace(/[0-9,]/g,"").trim() || "Rs.";
   instSettings.classesPerFee = parseInt(document.getElementById("inst_classesPerFee").value) || 4;
   instSettings.primaryColor  = document.getElementById("inst_primaryColor").value;
   instSettings.accentColor   = document.getElementById("inst_accentColor").value;
