@@ -3032,27 +3032,66 @@ function renderPortalSchedule(sid){
 }
 
 // ══ INIT ═══════════════════════════════════════════════════════════════════════
+
+// ── Loading splash ─────────────────────────────────────────────────────────────
+function showLoadingSplash(){
+  if(document.getElementById("_loadSplash")) return;
+  const el=document.createElement("div");
+  el.id="_loadSplash";
+  el.style.cssText="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;";
+  el.innerHTML=`
+    <div style="width:52px;height:52px;border-radius:14px;background:var(--rc-red);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:22px;color:#fff;">C</div>
+    <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:18px;color:var(--text);">CubeTrack</div>
+    <div style="width:220px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;">
+      <div id="_loadBar" style="height:100%;width:0%;background:var(--rc-red);border-radius:4px;transition:width 2.5s ease;"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">Syncing with Google Sheets…</div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{ const b=document.getElementById("_loadBar"); if(b) b.style.width="85%"; },80);
+}
+function hideLoadingSplash(){
+  const el=document.getElementById("_loadSplash");
+  if(el){ el.style.opacity="0"; el.style.transition="opacity .3s"; setTimeout(()=>el.remove(),320); }
+}
+
 async function init(){
-  // Seed the sync URL if not already saved
+  // Always write DEPLOY_URL — incognito clears localStorage every session,
+  // so we must never skip this, otherwise the app starts blank every time.
   const DEPLOY_URL="https://script.google.com/macros/s/AKfycbwl_tgQCqIPWDkCU_XWqecMpLfU5mgCpQ2EuQv_oaodPprgMZ2gyjCN8Sos9JxxaA4IMQ/exec";
-  if(!getSyncUrl()) setSyncUrl(DEPLOY_URL);
+  setSyncUrl(DEPLOY_URL);
+
   loadInst();
   loadProgress();
+
+  // Load whatever is in localStorage (empty in incognito — that's OK)
   const saved=lsGet("ct6_trainers",null);
   if(saved){
-    trainers=saved;students=lsGet("ct6_students",[]);
-    attendance=lsGet("ct6_att",{});feePayments=lsGet("ct6_fees",{});
-  } else { seedData(); }
+    trainers=saved; students=lsGet("ct6_students",[]);
+    attendance=lsGet("ct6_att",{}); feePayments=lsGet("ct6_fees",{});
+  } else {
+    // Don't seedData() yet — wait to see what the sheet returns
+    trainers=[]; students=[]; attendance={}; feePayments={};
+  }
+
   applyInstSettings();
   initLoginTabs();
   buildLoginFields();
-  // Show setup wizard on first run
-  if(!getInst("setupDone")) setTimeout(()=>openSetupWizard(), 400);
-  setTimeout(()=>{ if(getSyncUrl()) setSyncState("ok","Saved"); }, 100);
-  if(getSyncUrl()){
-    const updated=await pullFromSheet(true);
-    if(updated&&currentUser) showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
+
+  // Always pull fresh from Google Sheet — works in incognito too
+  showLoadingSplash();
+  let pullOk=false;
+  try { pullOk=!!(await pullFromSheet(true)); } catch(e){ /* offline */ }
+  hideLoadingSplash();
+
+  // Only show setup wizard if the sheet truly has no data (real fresh install)
+  const hasData=trainers.length>0||students.length>0;
+  if(!hasData && !getInst("setupDone")){
+    saveAll();
+    setTimeout(()=>openSetupWizard(), 400);
   }
+
+  setTimeout(()=>{ if(getSyncUrl()) setSyncState("ok","Saved"); }, 100);
+  if(pullOk&&currentUser) showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
 }
 init();
 </script>
