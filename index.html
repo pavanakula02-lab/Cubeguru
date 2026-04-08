@@ -707,7 +707,7 @@ select.form-input option{background:var(--surface);}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
         <div class="card">
           <div class="card-header"><span class="card-title">⚡ Today's Students</span><span class="mono c-muted" style="font-size:12px;" id="trainerTodayDay"></span></div>
-          <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Time</th><th>Mark</th><th>Cycle</th><th>Fee</th></tr></thead><tbody id="trainerTodayBody"></tbody></table></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Time</th><th>Mark</th><th>Cycle</th><th>Status</th></tr></thead><tbody id="trainerTodayBody"></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">My Students — Fee Status</span></div>
@@ -747,7 +747,7 @@ select.form-input option{background:var(--surface);}
       <div class="locked-banner">🔒 Student editing is restricted to Admin only. You can view student details and mark attendance.</div>
       <div class="card">
         <div class="card-header"><span class="card-title" id="trainerStudentsCount">Students</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Roll</th><th>Days</th><th>Time</th><th>Fee/Cycle</th><th>Attended</th><th>Cycle</th><th>Fee Status</th></tr></thead><tbody id="trainerStudentsBody"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Roll</th><th>Days</th><th>Time</th><th>Attended</th><th>Cycle</th><th>Status</th></tr></thead><tbody id="trainerStudentsBody"></tbody></table></div>
       </div>
     </div>
 
@@ -1251,6 +1251,7 @@ function applyInstSettings(){
   const psMA = document.getElementById("psMarkAtt"); if(psMA) psMA.textContent = "You can only mark attendance for your "+studentLbl2.toLowerCase();
   const psFR = document.getElementById("psFeeRule"); if(psFR) psFR.textContent = "Fee = every "+cpf+" attended "+studentLbl2.toLowerCase();
   const psR = document.getElementById("psReports"); if(psR) psR.textContent = "Summary by "+trainerLbl.toLowerCase()+" & "+studentLbl.toLowerCase();
+  const sbFR = document.getElementById("sidebarFeeRule"); if(sbFR) sbFR.textContent = cpf;
 
   // Sidebar nav
   const nT = document.getElementById("navTrainers"); if(nT) nT.textContent = trainersLbl;
@@ -1664,7 +1665,7 @@ function buildSidebar(){
       <div class="nav-item" id="nav-admin-progress" onclick="showPage('admin-progress')"><span class="nav-icon" style="color:#7c3aed;">◼</span><span>Progress</span></div>
       <div style="margin-top:24px;padding:14px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);font-size:11px;">
         <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:8px;">Fee Rule</div>
-        <div style="color:var(--muted);line-height:1.6;">Every <span style="color:var(--accent);font-weight:700;">4 classes</span> attended = 1 fee due</div>
+        <div style="color:var(--muted);line-height:1.6;">Every <span style="color:var(--accent);font-weight:700;" id="sidebarFeeRule">4</span> classes attended = 1 fee due</div>
       </div>`;
   } else {
     const t=getTrainer(currentUser.trainerId);
@@ -1921,7 +1922,7 @@ function renderAdminFees(){
   document.getElementById("adminFeeStats").innerHTML=`
     <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total Collected</div><div class="stat-value">${CUR()}${totalCollected.toLocaleString("en-IN")}</div></div>
     <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Total Pending</div><div class="stat-value">${CUR()}${totalDue.toLocaleString("en-IN")}</div><div class="stat-sub">${dueCount} students</div></div>
-    <div class="stat-card" style="--c:var(--rc-orange)"><div class="stat-label">Cycle Rule</div><div class="stat-value">4 classes</div><div class="stat-sub">= 1 fee due</div></div>
+    <div class="stat-card" style="--c:var(--rc-orange)"><div class="stat-label">Cycle Rule</div><div class="stat-value">${CLASSES_PER_FEE()} classes</div><div class="stat-sub">= 1 fee due</div></div>
   `;
   const tf=document.getElementById("adminFeeTrainerFilter")?.value;
   let list=students.filter(s=>!tf||s.trainerId==tf);
@@ -2025,7 +2026,7 @@ function renderTrainerDashboard(){
     return`<tr style="${isDue?"background:rgba(248,113,113,0.03)":""}">
       <td>${studentCell(s)}</td><td class="mono c-blue">${fs.totalAttended}</td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}</td>
-      <td><span class="badge ${isDue?"badge-due":"badge-ok"}">${isDue?fs.pendingCycles+" due":"Paid up"}</span></td>
+      <td><span class="badge ${isDue?"badge-due":"badge-ok"}">${isDue?"Due":"Paid up"}</span></td>
     </tr>`;
   }).join(""):emptyRow(4,"No students assigned yet");
 }
@@ -2054,7 +2055,7 @@ function renderTrainerAttendance(){
         ${waType?`<button class="btn-wa" style="margin-top:5px;display:block;" onclick="sendWhatsApp(${s.id},'${waType}')">${waLabel}</button>`:""}
       </td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--dim);margin-top:2px;">Total: ${fs.totalAttended}</div></td>
-      <td>${feeIndHTML(fs)}${fs.pendingCycles>0?`<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--rc-red);margin-top:2px;">×${fs.pendingCycles} unpaid</div>`:""}</td>
+      <td>${feeIndHTML(fs)}</td>
     </tr>`;
   }).join(""):emptyRow(6,`No students on ${DAY_FULL[dow]}`);
 }
@@ -2069,8 +2070,8 @@ function trainerSetAtt(studentId,status,date){
   // Fee alert
   const fs=getFeeStatus(studentId);
   if(fs.classesInCycle===CLASSES_PER_FEE()){
-    showToast(s.name+" — 4 classes done, fee due!","warn");
-    if(s.phone&&confirm(s.name+" has completed 4 classes. Send WhatsApp fee reminder?")) sendWhatsApp(s.id,"milestone");
+    showToast(s.name+" — "+CLASSES_PER_FEE()+" classes done, fee due!","warn");
+    if(s.phone&&confirm(s.name+" has completed "+CLASSES_PER_FEE()+" classes. Send WhatsApp fee reminder?")) sendWhatsApp(s.id,"milestone");
   }
   if(currentPage==="trainer-attendance")renderTrainerAttendance();
   if(currentPage==="trainer-dashboard")renderTrainerDashboard();
@@ -2096,12 +2097,11 @@ function renderTrainerStudents(){
       <td>${studentCell(s)}</td><td class="mono">${s.roll}</td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${dayPillsHTML(s.days)}</div></td>
       <td><span class="time-chip">${fmt12(s.start)} – ${fmt12(s.end)}</span></td>
-      <td class="mono">${CUR()}${s.fee.toLocaleString("en-IN")}</td>
       <td class="mono c-blue">${fs.totalAttended}</td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}</td>
       <td><span class="badge ${isDue?"badge-due":"badge-ok"}">${isDue?fs.pendingCycles+" due":"Paid up"}</span></td>
     </tr>`;
-  }).join(""):emptyRow(8,"No students assigned yet. Contact admin.");
+  }).join(""):emptyRow(7,"No students assigned yet. Contact admin.");
 }
 
 // ══ TRAINER / STUDENT MODALS (Admin only) ══════════════════════════════════════
