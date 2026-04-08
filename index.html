@@ -1041,7 +1041,7 @@ const DEFAULT_SETTINGS = {
   tagline:      "Class Management System",
   primaryColor: "#2563eb",
   accentColor:  "#d4a017",
-  currency:     "Rs.",
+  currency:     CUR()+" ",
   trainerLabel: "Trainer",
   trainersLabel:"Trainers",
   studentLabel: "Student",
@@ -1067,7 +1067,7 @@ function T(){ return getInst("trainerLabel"); }   // "Trainer"
 function Ts(){ return getInst("trainersLabel"); }  // "Trainers"
 function S(){ return getInst("studentLabel"); }    // "Student"
 function Ss(){ return getInst("studentsLabel"); }  // "Students"
-function CUR(){ return getInst("currency"); }      // "Rs."
+function CUR(){ const c=getInst("currency")||"Rs."; return c.replace(/[0-9,]/g,"").trim()||"Rs."; }
 function INAME(){ return getInst("name"); }        // "My Institute" 
 // Admin password stored in localStorage so it can be changed at runtime
 function getAdminPassword(){return lsGet("ct6_adminpwd","admin123");}
@@ -1312,7 +1312,7 @@ function saveInstSettings(){
   instSettings.trainersLabel = document.getElementById("inst_trainersLabel").value.trim() || "Trainers";
   instSettings.studentLabel  = document.getElementById("inst_studentLabel").value.trim() || "Student";
   instSettings.studentsLabel = document.getElementById("inst_studentsLabel").value.trim() || "Students";
-  instSettings.currency      = document.getElementById("inst_currency").value.trim() || "Rs.";
+  instSettings.currency      = (document.getElementById("inst_currency").value.trim() || CUR()+" ").replace(/[0-9,]/g,"").trim() || CUR()+" ";
   instSettings.classesPerFee = parseInt(document.getElementById("inst_classesPerFee").value) || 4;
   instSettings.primaryColor  = document.getElementById("inst_primaryColor").value;
   instSettings.accentColor   = document.getElementById("inst_accentColor").value;
@@ -1791,8 +1791,8 @@ function renderAdminDashboard(){
     <div class="stat-card" style="--c:var(--rc-blue)"><div class="stat-label">${Ts()}</div><div class="stat-value">${trainers.length}</div></div>
     <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total ${Ss()}</div><div class="stat-value">${students.length}</div></div>
     <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Present Today</div><div class="stat-value">${present}</div><div class="stat-sub">of ${todayStu.length} scheduled</div></div>
-    <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Fee Pending</div><div class="stat-value">${CUR()}${totalDue.toLocaleString("en-IN")}</div><div class="stat-sub">${dueStudents.length} students</div></div>
-    <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total Collected</div><div class="stat-value">${CUR()}${totalCollected.toLocaleString("en-IN")}</div></div>
+    <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Fee Pending</div><div class="stat-value">${CUR()} ${totalDue.toLocaleString("en-IN")}</div><div class="stat-sub">${dueStudents.length} students</div></div>
+    <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total Collected</div><div class="stat-value">${CUR()} ${totalCollected.toLocaleString("en-IN")}</div></div>
   `;
   // Empty state when fresh install
   if(!trainers.length && !students.length){
@@ -1822,7 +1822,7 @@ function renderAdminDashboard(){
   // Fee alerts
   document.getElementById("adminFeeAlertBody").innerHTML=dueStudents.slice(0,8).map(s=>{
     const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
-    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono c-red">${CUR()}${(fs.pendingCycles*s.fee).toLocaleString("en-IN")}</td><td style="display:flex;gap:6px;align-items:center;"><button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">Collect</button>${s.phone?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'fee')">WA</button>`:""}</td></tr>`;
+    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono c-red">${CUR()} ${(fs.pendingCycles*s.fee).toLocaleString("en-IN")}</td><td style="display:flex;gap:6px;align-items:center;"><button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">Collect</button>${s.phone?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'fee')">WA</button>`:""}</td></tr>`;
   }).join("")||`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--rc-green);">✓ No pending fees</td></tr>`;
 }
 
@@ -1841,7 +1841,7 @@ function renderTrainers(){
       <div class="trainer-stats">
         <div class="trainer-stat"><div class="trainer-stat-val" style="color:${t.color};">${tStu.length}</div><div class="trainer-stat-lbl" id="tStatStu">Students</div></div>
         <div class="trainer-stat"><div class="trainer-stat-val" style="color:var(--rc-green);">${totalAtt}</div><div class="trainer-stat-lbl">Classes</div></div>
-        <div class="trainer-stat"><div class="trainer-stat-val" style="color:${totalDue>0?"#f87171":"#6ee7b7"};">${CUR()}${totalDue>0?(totalDue/1000).toFixed(1)+"k":"0"}</div><div class="trainer-stat-lbl">Pending</div></div>
+        <div class="trainer-stat"><div class="trainer-stat-val" style="color:${totalDue>0?"#f87171":"#6ee7b7"};">${CUR()} ${totalDue>0?(totalDue/1000).toFixed(1)+"k":"0"}</div><div class="trainer-stat-lbl">Pending</div></div>
       </div>
       <div class="trainer-actions">
         <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="openEditTrainer(${t.id})">✎ Edit</button>
@@ -1880,7 +1880,7 @@ function renderAdminStudents(){
       <td>${trainerBadge(t)}</td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap;">${dayPillsHTML(s.days)}</div></td>
       <td>${s.start&&s.end?`<span class="time-chip">${fmt12(s.start)} – ${fmt12(s.end)}</span>`:"—"}</td>
-      <td class="mono">${CUR()}${s.fee.toLocaleString("en-IN")}</td>
+      <td class="mono">${CUR()} ${s.fee.toLocaleString("en-IN")}</td>
       <td class="mono c-blue">${fs.totalAttended}</td>
       <td><span class="badge ${isDue?"badge-due":"badge-ok"}">${isDue?fs.pendingCycles+" due":"Paid up"}</span></td>
       <td><div style="display:flex;gap:6px;">
@@ -1920,8 +1920,8 @@ function renderAdminFees(){
   const totalDue=students.reduce((sum,s)=>{const fs=getFeeStatus(s.id);return sum+fs.pendingCycles*s.fee;},0);
   const dueCount=students.filter(s=>getFeeStatus(s.id).pendingCycles>0).length;
   document.getElementById("adminFeeStats").innerHTML=`
-    <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total Collected</div><div class="stat-value">${CUR()}${totalCollected.toLocaleString("en-IN")}</div></div>
-    <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Total Pending</div><div class="stat-value">${CUR()}${totalDue.toLocaleString("en-IN")}</div><div class="stat-sub">${dueCount} students</div></div>
+    <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Total Collected</div><div class="stat-value">${CUR()} ${totalCollected.toLocaleString("en-IN")}</div></div>
+    <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Total Pending</div><div class="stat-value">${CUR()} ${totalDue.toLocaleString("en-IN")}</div><div class="stat-sub">${dueCount} students</div></div>
     <div class="stat-card" style="--c:var(--rc-orange)"><div class="stat-label">Cycle Rule</div><div class="stat-value">${CLASSES_PER_FEE()} classes</div><div class="stat-sub">= 1 fee due</div></div>
   `;
   const tf=document.getElementById("adminFeeTrainerFilter")?.value;
@@ -1930,18 +1930,18 @@ function renderAdminFees(){
     const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId),isDue=fs.pendingCycles>0;
     return`<tr style="${isDue?"background:rgba(248,113,113,0.03)":""}">
       <td>${studentCell(s)}</td><td>${trainerBadge(t)}</td>
-      <td class="mono">${CUR()}${s.fee.toLocaleString("en-IN")}</td>
+      <td class="mono">${CUR()} ${s.fee.toLocaleString("en-IN")}</td>
       <td class="mono c-blue">${fs.totalAttended}</td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:${isDue?"#f87171":"#4a5068"};margin-top:3px;">${fs.classesUntilDue===0?"Due now!":fs.classesUntilDue+" left"}</div></td>
       <td class="mono" style="font-size:14px;font-weight:700;color:${isDue?"#f87171":"#6ee7b7"};">${fs.pendingCycles}</td>
-      <td class="mono" style="color:${isDue?"#f87171":"#6ee7b7"};">${isDue?CUR()+(fs.pendingCycles*s.fee).toLocaleString("en-IN"):"—"}</td>
+      <td class="mono" style="color:${isDue?"#f87171":"#6ee7b7"};">${isDue?CUR()+" "+(fs.pendingCycles*s.fee).toLocaleString("en-IN"):"—"}</td>
       <td>${isDue?`<button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">💰 Collect</button>`:`<span class="badge badge-ok">Paid Up</span>`}</td>
     </tr>`;
   }).join("")||emptyRow(8,"No records");
   const allPay=students.flatMap(s=>(feePayments[s.id]||[]).map(p=>({s,p}))).sort((a,b)=>b.p.date.localeCompare(a.p.date)).slice(0,20);
   document.getElementById("adminFeeHistoryBody").innerHTML=allPay.length?allPay.map(({s,p})=>{
     const t=getTrainer(s.trainerId);
-    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono">Cycle ${p.cycle}</td><td class="mono c-green">${CUR()}${p.amount.toLocaleString("en-IN")}</td><td>${p.mode}</td><td class="mono c-dim">${p.date}</td></tr>`;
+    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono">Cycle ${p.cycle}</td><td class="mono c-green">${CUR()} ${p.amount.toLocaleString("en-IN")}</td><td>${p.mode}</td><td class="mono c-dim">${p.date}</td></tr>`;
   }).join(""):emptyRow(6,"No payments yet");
 }
 
@@ -1977,8 +1977,8 @@ function renderReports(){
       <td class="mono">${tStu.length}</td><td class="mono c-blue">${tTotal}</td>
       <td class="mono c-green">${tPresent}</td>
       <td><span style="color:${avgPct>=75?"#6ee7b7":avgPct>=50?"#f59e0b":"#f87171"};font-family:'DM Mono',monospace;">${avgPct}%</span></td>
-      <td class="mono c-green">${CUR()}${collected.toLocaleString("en-IN")}</td>
-      <td class="mono" style="color:${pending>0?"#f87171":"#6ee7b7"};">${CUR()}${pending.toLocaleString("en-IN")}</td>
+      <td class="mono c-green">${CUR()} ${collected.toLocaleString("en-IN")}</td>
+      <td class="mono" style="color:${pending>0?"#f87171":"#6ee7b7"};">${CUR()} ${pending.toLocaleString("en-IN")}</td>
     </tr>`;
   }).join("")||emptyRow(7,"No trainers yet");
   document.getElementById("studentReportBody").innerHTML=students.map(s=>{
@@ -2239,19 +2239,19 @@ function renderPayModal(){
   document.getElementById("payModalContent").innerHTML=`
     <div class="pay-student-header">${avatarHTML(s,48)}<div>
       <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;">${s.name}</div>
-      <div class="mono c-muted" style="font-size:12px;">${s.roll} · ${trainerBadge(t)} · ${CUR()}${s.fee.toLocaleString("en-IN")}/cycle</div>
+      <div class="mono c-muted" style="font-size:12px;">${s.roll} · ${trainerBadge(t)} · ${CUR()} ${s.fee.toLocaleString("en-IN")}/cycle</div>
     </div></div>
     <div style="background:var(--surface2);border-radius:8px;padding:16px;margin-bottom:16px;">
       <div class="mono c-dim" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Unpaid Cycles</div>
-      ${unpaid.map(c=>`<div class="cycle-row"><div><div style="font-size:13px;font-weight:500;">Cycle ${c}</div><div class="mono c-dim" style="font-size:11px;">Classes ${(c-1)*CLASSES_PER_FEE()+1}–${c*CLASSES_PER_FEE()}</div></div><div class="mono c-red" style="font-size:14px;font-weight:600;">${CUR()}${s.fee.toLocaleString("en-IN")}</div></div>`).join("")}
-      <div class="cycle-total"><span>Total Due</span><span class="mono c-red">${CUR()}${total.toLocaleString("en-IN")}</span></div>
+      ${unpaid.map(c=>`<div class="cycle-row"><div><div style="font-size:13px;font-weight:500;">Cycle ${c}</div><div class="mono c-dim" style="font-size:11px;">Classes ${(c-1)*CLASSES_PER_FEE()+1}–${c*CLASSES_PER_FEE()}</div></div><div class="mono c-red" style="font-size:14px;font-weight:600;">${CUR()} ${s.fee.toLocaleString("en-IN")}</div></div>`).join("")}
+      <div class="cycle-total"><span>Total Due</span><span class="mono c-red">${CUR()} ${total.toLocaleString("en-IN")}</span></div>
     </div>
     <div class="form-group"><label class="form-label">Payment Mode</label>
       <select class="form-input" id="payModeSelect">${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option>${m}</option>`).join("")}</select>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPay')">Cancel</button>
-      <button class="btn btn-primary" onclick="recordPayments(${JSON.stringify(unpaid)},${total})">✓ Collect ${CUR()}${total.toLocaleString("en-IN")}</button>
+      <button class="btn btn-primary" onclick="recordPayments(${JSON.stringify(unpaid)},${total})">✓ Collect ${CUR()} ${total.toLocaleString("en-IN")}</button>
     </div>`;
 }
 function recordPayments(unpaid,total){
@@ -2260,7 +2260,7 @@ function recordPayments(unpaid,total){
   if(!feePayments[s.id])feePayments[s.id]=[];
   unpaid.forEach(c=>feePayments[s.id].push({cycle:c,amount:s.fee,mode,date:todayStr()}));
   saveAll();closeModal("modalPay");
-  showToast("Rs."+total.toLocaleString("en-IN")+" collected for "+s.name+"!","success");
+  showToast(CUR()+" "+total.toLocaleString("en-IN")+" collected for "+s.name+"!","success");
   if(s.phone&&confirm("Send WhatsApp receipt to "+s.name+"?")) sendWhatsApp(s.id,"receipt");
   if(currentPage==="admin-fees")renderAdminFees();
   if(currentPage==="admin-dashboard")renderAdminDashboard();
@@ -2941,7 +2941,7 @@ function renderPortalFees(sid){
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
       <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-family:'Space Mono',monospace;">Fee/Cycle</div>
-        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:var(--text);">${c}${s.fee.toLocaleString("en-IN")}</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:var(--text);">${c} ${s.fee.toLocaleString("en-IN")}</div>
       </div>
       <div style="background:rgba(42,157,78,.08);border-radius:8px;padding:12px;text-align:center;">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-family:'Space Mono',monospace;">Paid</div>
@@ -2952,7 +2952,7 @@ function renderPortalFees(sid){
         <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:${fs.pendingCycles>0?"var(--rc-red)":"var(--rc-green)"};">${fs.pendingCycles>0?c+pendingAmt.toLocaleString("en-IN"):"All paid"}</div>
       </div>
     </div>
-    ${fs.pendingCycles>0?`<div style="background:rgba(230,57,70,.07);border:1px solid rgba(230,57,70,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--rc-red);">⚠ ${fs.pendingCycles} fee cycle${fs.pendingCycles>1?"s":""} pending (${c}${pendingAmt.toLocaleString("en-IN")}). Please contact your trainer to pay.</div>`:""}
+    ${fs.pendingCycles>0?`<div style="background:rgba(230,57,70,.07);border:1px solid rgba(230,57,70,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--rc-red);">⚠ ${fs.pendingCycles} fee cycle${fs.pendingCycles>1?"s":""} pending (${c} ${pendingAmt.toLocaleString("en-IN")}). Please contact your trainer to pay.</div>`:""}
     <div style="font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin-bottom:8px;">Cycle History</div>
     ${cycles.length?cycles.map(({cycle,paid,pmt})=>`
       <div class="portal-fee-cycle">
@@ -2961,7 +2961,7 @@ function renderPortalFees(sid){
           ${pmt?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${pmt.date} · ${pmt.mode}</div>`:""}
         </div>
         <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;${paid?"background:rgba(42,157,78,.1);color:var(--rc-green);":"background:rgba(230,57,70,.1);color:var(--rc-red);"}">
-          ${paid?c+(pmt?.amount||s.fee).toLocaleString("en-IN")+" Paid":"Pending"}
+          ${paid?c+" "+(pmt?.amount||s.fee).toLocaleString("en-IN")+" Paid":"Pending"}
         </span>
       </div>`).join(""):`<div style="text-align:center;padding:16px;color:var(--dim);font-size:13px;">No fee cycles completed yet.</div>`}
     <div style="padding-top:12px;font-size:11px;color:var(--dim);font-family:'Space Mono',monospace;">Next fee due after ${fs.classesUntilDue===0?"now":fs.classesUntilDue+" more class"+(fs.classesUntilDue>1?"es":"")}</div>
