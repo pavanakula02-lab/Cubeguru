@@ -1531,27 +1531,27 @@ function initLoginTabs(){
 }
 function buildLoginFields(){
   const f=document.getElementById("loginFields");
+  const pwdField=(id)=>`<div class="login-field"><label class="login-label">Password</label><input class="login-input" id="${id}" type="password" placeholder="••••••••"></div>`;
   if(loginRole==="admin"){
-    f.innerHTML=
-      '<div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="admin" value="admin"></div>'+
-      '<div class="login-field"><label class="login-label">Password</label><input class="login-input" id="loginPass" type="password" placeholder="\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022"></div>'+
-      '<button class="login-btn login-btn-admin" id="loginSubmitBtn">Sign in as Admin \\u2192</button>';
-    document.getElementById("loginHint").innerHTML="Username: admin &nbsp;·&nbsp; Use the password you set";
+    f.innerHTML=`
+      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="admin" value="admin"></div>
+      ${pwdField("loginPass")}
+      <button class="login-btn login-btn-admin" id="loginSubmitBtn">Sign in as Admin →</button>`;
+    document.getElementById("loginHint").innerHTML="Username: admin &nbsp;&middot;&nbsp; Use the password you set";
   } else if(loginRole==="parent"){
-    f.innerHTML=
-      '<div class="login-field"><label class="login-label">Student Roll Number</label><input class="login-input" id="loginUser" placeholder="e.g. 101"></div>'+
-      '<div class="login-field"><label class="login-label">Your Phone Number</label><input class="login-input" id="loginPass" type="tel" placeholder="Registered parent phone"></div>'+
-      '<button class="login-btn" id="loginSubmitBtn" style="background:var(--rc-green);color:#fff;width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:Nunito,sans-serif;margin-top:8px;">View My Child\\u2019s Progress \\u2192</button>';
-    document.getElementById("loginHint").innerHTML="Enter your child\\u2019s roll number + your registered phone";
+    f.innerHTML=`
+      <div class="login-field"><label class="login-label">Student Roll Number</label><input class="login-input" id="loginUser" placeholder="e.g. 101"></div>
+      <div class="login-field"><label class="login-label">Your Phone Number</label><input class="login-input" id="loginPass" type="tel" placeholder="Registered parent phone"></div>
+      <button class="login-btn" id="loginSubmitBtn" style="background:var(--rc-green);color:#fff;width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:Nunito,sans-serif;margin-top:8px;">View My Child’s Progress →</button>`;
+    document.getElementById("loginHint").innerHTML="Enter your child’s roll number + your registered phone";
   } else {
-    f.innerHTML=
-      '<div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="trainer username"></div>'+
-      '<div class="login-field"><label class="login-label">Password</label><input class="login-input" id="loginPass" type="password" placeholder="\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022"></div>'+
-      '<button class="login-btn login-btn-trainer" id="loginSubmitBtn">Sign in as Trainer \\u2192</button>';
-    const names=trainers.map(t=>t.username).join(" \\u00b7 ");
+    const names=trainers.map(t=>t.username).join(" · ");
+    f.innerHTML=`
+      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="trainer username"></div>
+      ${pwdField("loginPass")}
+      <button class="login-btn login-btn-trainer" id="loginSubmitBtn">Sign in as Trainer →</button>`;
     document.getElementById("loginHint").innerHTML="Trainer accounts: "+names;
   }
-  // Use onclick attributes set directly — avoids duplicate listeners on re-render
   const btn=document.getElementById("loginSubmitBtn");
   if(btn) btn.onclick=doLogin;
   const passEl=document.getElementById("loginPass");
