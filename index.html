@@ -1131,15 +1131,18 @@ async function pullFromSheet(silent){
     const j = JSON.parse(await r.text());
     if(j.ok && j.data){
       const d=j.data, sheetTs=d.ts||"", localTs=getSyncTs()||"";
-      if(sheetTs>localTs||silent==="force"){
+      if(sheetTs>localTs||silent===true||silent==="force"){
         trainers=d.trainers||trainers; students=d.students||students;
         attendance=d.attendance||attendance; feePayments=d.feePayments||feePayments;
-        if(d.adminpwd && !lsGet("ct6_adminpwd",null)) setAdminPassword(d.adminpwd);
+        // Always sync admin password from sheet — ensures consistent login across all devices
+        if(d.adminpwd) setAdminPassword(d.adminpwd);
       if(d.instSettings && Object.keys(d.instSettings).length){
         instSettings={...DEFAULT_SETTINGS,...d.instSettings};
         saveInst();
         applyInstSettings();
       }
+        if(d.puzzleTypes&&d.puzzleTypes.length){ puzzleTypes=d.puzzleTypes; lsSave("ct_puzzles",puzzleTypes); }
+        if(d.studentProgress&&Object.keys(d.studentProgress).length){ studentProgress=d.studentProgress; lsSave("ct_progress",studentProgress); }
         lsSave("ct6_trainers",trainers); lsSave("ct6_students",students);
         lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
         setSyncTs(sheetTs); setSyncState("ok","Pulled "+fmtNow());
@@ -1455,6 +1458,7 @@ function seedData(){
 function saveAll(){
   lsSave("ct6_trainers",trainers);lsSave("ct6_students",students);
   lsSave("ct6_att",attendance);lsSave("ct6_fees",feePayments);
+  lsSave("ct_puzzles",puzzleTypes);lsSave("ct_progress",studentProgress);
   scheduleSyncPush();
 }
 
@@ -1490,7 +1494,7 @@ function trainerBadge(t){
   return`<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:10px;font-size:11px;font-family:'DM Mono',monospace;background:${t.color}18;color:${t.color};border:1px solid ${t.color}33;">${t.name.split(" ")[0]}</span>`;
 }
 function dotsHTML(done,total=CLASSES_PER_FEE(),color){
-  const c=color||(done>=total?"#f87171":done>=3?"#f59e0b":"#6ee7b7");
+  const cpf=CLASSES_PER_FEE();const c=color||(done>=total?"#f87171":done>=(cpf-1)?"#f59e0b":"#6ee7b7");
   let h='<div class="dots">';
   for(let i=0;i<total;i++)h+=`<div class="dot" style="background:${i<done?c:"#2a2f3d"};border:1.5px solid ${i<done?c:"#3a3f4d"};"></div>`;
   return h+'</div>';
@@ -1544,12 +1548,13 @@ function buildLoginFields(){
     const names=trainers.map(t=>t.username).join(" \\u00b7 ");
     document.getElementById("loginHint").innerHTML="Trainer accounts: "+names;
   }
+  // Use onclick attributes set directly — avoids duplicate listeners on re-render
   const btn=document.getElementById("loginSubmitBtn");
-  if(btn) btn.addEventListener("click",doLogin);
+  if(btn) btn.onclick=doLogin;
   const passEl=document.getElementById("loginPass");
-  if(passEl) passEl.addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
+  if(passEl) passEl.onkeydown=function(e){if(e.key==="Enter")doLogin();};
   const userEl=document.getElementById("loginUser");
-  if(userEl) userEl.addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
+  if(userEl) userEl.onkeydown=function(e){if(e.key==="Enter")doLogin();};
 }
 function doLogin(){
   const user=document.getElementById("loginUser").value.trim();
@@ -1967,7 +1972,12 @@ function renderReports(){
   document.getElementById("trainerReportBody").innerHTML=trainers.map(t=>{
     const tStu=students.filter(s=>s.trainerId===t.id);
     let tPresent=0,tTotal=0;
-    tStu.forEach(s=>{const att=getAttendedDates(s.id);tPresent+=att.length;tTotal+=att.length;});
+    tStu.forEach(s=>{
+      const att=getAttendedDates(s.id);
+      tPresent+=att.length;
+      // tTotal = all days that were marked (present + absent + late) for this student
+      tTotal+=Object.values(attendance).filter(r=>r[s.id]).length;
+    });
     let attPcts=tStu.map(s=>{const att=getAttendedDates(s.id).length,ab=Object.values(attendance).filter(d=>d[s.id]==="absent").length;return att+ab>0?Math.round(att/(att+ab)*100):0;});
     const avgPct=attPcts.length?Math.round(attPcts.reduce((a,b)=>a+b,0)/attPcts.length):0;
     const collected=tStu.reduce((sum,s)=>(feePayments[s.id]||[]).reduce((a,p)=>a+p.amount,sum),0);
@@ -2149,7 +2159,7 @@ function openAssignStudents(tid){
       ${students.map(s=>{
         const currentT=s.trainerId&&s.trainerId!==tid?getTrainer(s.trainerId):null;
         return`<div class="assign-item" onclick="toggleAssign(${s.id},this)">
-          <input type="checkbox" ${assignedIds.includes(s.id)?"checked":""} onchange="toggleAssign(${s.id},this.parentElement)" onclick="event.stopPropagation()">
+          <input type="checkbox" data-sid="${s.id}" ${assignedIds.includes(s.id)?"checked":""} onchange="toggleAssign(${s.id},this.parentElement)" onclick="event.stopPropagation()">
           ${avatarHTML(s)}
           <div class="assign-item-info">
             <div class="assign-item-name">${s.name}</div>
@@ -2169,8 +2179,13 @@ function toggleAssign(sid,row){
   const cb=row.querySelector("input[type=checkbox]");if(cb)cb.checked=!cb.checked;
 }
 function saveAssignments(){
+  // Use data-sid attributes instead of array index — safe regardless of sort order
   const cbs=document.querySelectorAll(".assign-item input[type=checkbox]");
-  cbs.forEach((cb,i)=>{students[i].trainerId=cb.checked?assignTrainerId:null;});
+  cbs.forEach(cb=>{
+    const sid=parseInt(cb.dataset.sid);
+    const s=students.find(x=>x.id===sid);
+    if(s) s.trainerId=cb.checked?assignTrainerId:null;
+  });
   saveAll();closeModal("modalPay");renderTrainers();showToast("Assignments saved!","success");
 }
 
@@ -2208,7 +2223,8 @@ function saveStudent(){
   const trainerId=parseInt(document.getElementById("s_trainer").value)||null;
   if(!name||!roll||!fee){showToast("Fill Name, Roll, and Fee","error");return;}
   if(!selectedDays.length){showToast("Select at least one class day","error");return;}
-  if(start>=end){showToast("End time must be after start time","error");return;}
+  const toMins=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
+  if(toMins(start)>=toMins(end)){showToast("End time must be after start time","error");return;}
   if(editStudentId){
     students=students.map(s=>s.id===editStudentId?{...s,name,roll,phone:document.getElementById("s_phone").value.trim(),parentName:document.getElementById("s_parentName").value.trim(),parentPhone:document.getElementById("s_parentPhone").value.trim(),fee,days:selectedDays,start,end,trainerId}:s);
     showToast(`${name} updated!`,"success");
@@ -2224,9 +2240,20 @@ function saveStudent(){
   updateFeesDot();
 }
 function deleteStudent(id){
-  if(!confirm("Remove this student?"))return;
-  students=students.filter(s=>s.id!==id);saveAll();
-  renderAdminStudents();showToast("Student removed","success");updateFeesDot();
+  const s=students.find(x=>x.id===id);
+  if(!s)return;
+  if(!confirm("Remove "+s.name+"? This will permanently delete their attendance, fee, and progress records."))return;
+  students=students.filter(x=>x.id!==id);
+  delete feePayments[id];
+  // Clean up attendance records for this student
+  Object.keys(attendance).forEach(date=>{
+    if(attendance[date][id]) delete attendance[date][id];
+    if(!Object.keys(attendance[date]).length) delete attendance[date];
+  });
+  delete studentProgress[id];
+  lsSave("ct_progress",studentProgress);
+  saveAll();
+  renderAdminStudents();showToast(s.name+" removed","success");updateFeesDot();
 }
 
 // ══ PAY MODAL ══════════════════════════════════════════════════════════════════
@@ -2251,11 +2278,13 @@ function renderPayModal(){
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPay')">Cancel</button>
-      <button class="btn btn-primary" onclick="recordPayments(${JSON.stringify(unpaid)},${total})">✓ Collect ${CUR()} ${total.toLocaleString("en-IN")}</button>
+      <button class="btn btn-primary" onclick="recordPayments(${JSON.stringify(unpaid)})">✓ Collect ${CUR()} ${total.toLocaleString("en-IN")}</button>
     </div>`;
 }
-function recordPayments(unpaid,total){
+function recordPayments(unpaid){
   const s=students.find(x=>x.id===payStudentId);if(!s)return;
+  // Recalculate total at call time — never trust stale HTML-baked values
+  const total=unpaid.length*s.fee;
   const mode=document.getElementById("payModeSelect")?.value||"Cash";
   if(!feePayments[s.id])feePayments[s.id]=[];
   unpaid.forEach(c=>feePayments[s.id].push({cycle:c,amount:s.fee,mode,date:todayStr()}));
