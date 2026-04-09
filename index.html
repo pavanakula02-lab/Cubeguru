@@ -626,8 +626,11 @@ select.form-input option{background:var(--surface);}
         <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Trainer</th><th>Fee/Cycle</th><th>Attended</th><th>Cycle Progress</th><th>Cycles Due</th><th>Amount Due</th><th>Action</th></tr></thead><tbody id="adminFeeBody"></tbody></table></div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">Payment History</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Trainer</th><th>Cycle</th><th>Amount</th><th>Mode</th><th>Date</th></tr></thead><tbody id="adminFeeHistoryBody"></tbody></table></div>
+        <div class="card-header">
+  <span class="card-title">Payment History</span>
+  <span style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">Last 20 entries — click ✎ to edit</span>
+</div>
+        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Trainer</th><th>Cycle</th><th>Amount</th><th>Mode</th><th>Date</th><th>Note</th><th>Actions</th></tr></thead><tbody id="adminFeeHistoryBody"></tbody></table></div>
       </div>
     </div>
 
@@ -1940,13 +1943,26 @@ function renderAdminFees(){
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:${isDue?"#f87171":"#4a5068"};margin-top:3px;">${fs.classesUntilDue===0?"Due now!":fs.classesUntilDue+" left"}</div></td>
       <td class="mono" style="font-size:14px;font-weight:700;color:${isDue?"#f87171":"#6ee7b7"};">${fs.pendingCycles}</td>
       <td class="mono" style="color:${isDue?"#f87171":"#6ee7b7"};">${isDue?CUR()+" "+(fs.pendingCycles*s.fee).toLocaleString("en-IN"):"—"}</td>
-      <td>${isDue?`<button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">💰 Collect</button>`:`<span class="badge badge-ok">Paid Up</span>`}</td>
+      <td style="white-space:nowrap;">
+        ${isDue?`<button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})" style="margin-right:4px;">💰 Collect</button>`:`<span class="badge badge-ok" style="margin-right:4px;">✓ ${fs.paidCycles.size} paid</span>`}
+        <button class="btn btn-ghost btn-sm" onclick="openFeeHistory(${s.id})" title="View/Edit payments">📋</button>
+      </td>
     </tr>`;
   }).join("")||emptyRow(8,"No records");
   const allPay=students.flatMap(s=>(feePayments[s.id]||[]).map(p=>({s,p}))).sort((a,b)=>b.p.date.localeCompare(a.p.date)).slice(0,20);
   document.getElementById("adminFeeHistoryBody").innerHTML=allPay.length?allPay.map(({s,p})=>{
     const t=getTrainer(s.trainerId);
-    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono">Cycle ${p.cycle}</td><td class="mono c-green">${CUR()} ${p.amount.toLocaleString("en-IN")}</td><td>${p.mode}</td><td class="mono c-dim">${p.date}</td></tr>`;
+    return`<tr>
+      <td>${studentCell(s)}</td><td>${trainerBadge(t)}</td>
+      <td class="mono">Cycle ${p.cycle}</td>
+      <td class="mono c-green">${CUR()} ${p.amount.toLocaleString("en-IN")}</td>
+      <td style="font-size:12px;">${p.mode||"—"}</td>
+      <td class="mono c-dim" style="font-size:12px;">${p.date}</td>
+      <td style="font-size:11px;color:var(--muted);">${p.note||"—"}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="openFeeHistory(${s.id})" title="Edit">✎</button>
+      </td>
+    </tr>`;
   }).join(""):emptyRow(6,"No payments yet");
 }
 
@@ -2256,40 +2272,220 @@ function deleteStudent(id){
   renderAdminStudents();showToast(s.name+" removed","success");updateFeesDot();
 }
 
+
+// ══ FEE HISTORY MODAL ══════════════════════════════════════════════════════════
+function openFeeHistory(sid){
+  payStudentId=sid;
+  renderFeeHistory();
+  openModal("modalPay");
+}
+function renderFeeHistory(){
+  const s=students.find(x=>x.id===payStudentId);if(!s)return;
+  const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
+  const pays=(feePayments[s.id]||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const totalPaid=pays.reduce((sum,p)=>sum+p.amount,0);
+  document.getElementById("payModalContent").innerHTML=`
+    <div class="pay-student-header">${avatarHTML(s,48)}<div>
+      <div style="font-weight:700;font-size:16px;">${s.name} — Payment History</div>
+      <div class="mono c-muted" style="font-size:12px;">${s.roll} · ${CUR()} ${s.fee.toLocaleString("en-IN")}/cycle · ${trainerBadge(t)}</div>
+    </div></div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:4px;">ATTENDED</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;">${fs.totalAttended}</div>
+      </div>
+      <div style="background:rgba(42,157,78,.08);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:4px;">TOTAL PAID</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:var(--rc-green);">${CUR()} ${totalPaid.toLocaleString("en-IN")}</div>
+      </div>
+      <div style="background:${fs.pendingCycles>0?"rgba(230,57,70,.08)":"rgba(42,157,78,.08)"};border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:4px;">STATUS</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:${fs.pendingCycles>0?"var(--rc-red)":"var(--rc-green)"};">${fs.pendingCycles>0?fs.pendingCycles+" due":"All paid"}</div>
+      </div>
+    </div>
+
+    ${pays.length?`
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:60px 1fr 90px 80px 80px 36px;gap:0;background:var(--surface2);padding:8px 12px;font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">
+        <span>Cycle</span><span>Date & Mode</span><span>Amount</span><span>Mode</span><span>Note</span><span></span>
+      </div>
+      ${pays.map(p=>`
+        <div id="fhr_${p.id||p.cycle}" style="display:grid;grid-template-columns:60px 1fr 90px 80px 80px 36px;gap:0;padding:10px 12px;border-top:1px solid var(--border);align-items:center;" class="fee-hist-row">
+          <span class="mono" style="font-size:13px;font-weight:700;color:var(--rc-blue);">#${p.cycle}</span>
+          <span style="font-size:12px;">
+            <input type="date" value="${p.date}" style="border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--surface2);color:var(--text);"
+              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'date',this.value,${s.id})">
+          </span>
+          <span>
+            <div style="display:flex;align-items:center;gap:3px;">
+              <span style="font-size:11px;color:var(--muted);">${CUR()}</span>
+              <input type="number" value="${p.amount}" min="0" style="width:68px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'Space Mono',monospace;background:var(--surface2);color:var(--text);"
+                onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'amount',parseFloat(this.value),${s.id})">
+            </div>
+          </span>
+          <span>
+            <select style="border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:11px;background:var(--surface2);color:var(--text);"
+              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'mode',this.value,${s.id})">
+              ${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option ${p.mode===m?"selected":""}>${m}</option>`).join("")}
+            </select>
+          </span>
+          <span>
+            <input type="text" value="${p.note||""}" placeholder="note" style="width:72px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--surface2);color:var(--text);"
+              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'note',this.value,${s.id})">
+          </span>
+          <span style="text-align:center;">
+            <button onclick="deletePayment(${p.id||p.cycle+'_'+p.cycle},${s.id})" title="Delete payment"
+              style="background:none;border:none;color:var(--rc-red);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;">✕</button>
+          </span>
+        </div>`).join("")}
+    </div>`:`
+    <div style="text-align:center;padding:24px;color:var(--dim);font-size:13px;border:1px dashed var(--border);border-radius:10px;margin-bottom:14px;">
+      No payments recorded yet.
+    </div>`}
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPay')">Close</button>
+      ${fs.pendingCycles>0?`<button class="btn btn-primary" onclick="openPayModal(${s.id})">💰 Collect Fee</button>`:""}
+    </div>`;
+}
+
+function editPaymentField(pid, field, value, sid){
+  const pays=feePayments[sid]||[];
+  // pid can be the payment's .id property or a fallback cycle-based key
+  const p=pays.find(x=>x.id===pid)||pays.find(x=>(x.cycle+"_"+x.cycle)===String(pid));
+  if(!p){showToast("Payment record not found","error");return;}
+  p[field]=value;
+  feePayments[sid]=pays;
+  saveAll();
+  showToast("Payment updated","success");
+  if(currentPage==="admin-fees") renderAdminFees();
+}
+
+function deletePayment(pid, sid){
+  if(!confirm("Delete this payment record? The cycle will be marked unpaid again."))return;
+  const pays=feePayments[sid]||[];
+  feePayments[sid]=pays.filter(p=>p.id!==pid&&!((p.cycle+"_"+p.cycle)===String(pid)));
+  saveAll();
+  showToast("Payment deleted","success");
+  renderFeeHistory();
+  if(currentPage==="admin-fees") renderAdminFees();
+  updateFeesDot();
+}
+
 // ══ PAY MODAL ══════════════════════════════════════════════════════════════════
 function openPayModal(sid){payStudentId=sid;renderPayModal();openModal("modalPay");}
 function renderPayModal(){
   const s=students.find(x=>x.id===payStudentId);if(!s)return;
   const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
   const unpaid=[];for(let c=1;c<=fs.completedCycles;c++)if(!fs.paidCycles.has(c))unpaid.push(c);
-  const total=unpaid.length*s.fee;
+  if(!unpaid.length){
+    document.getElementById("payModalContent").innerHTML=`
+      <div style="text-align:center;padding:24px 0;">
+        <div style="font-size:40px;margin-bottom:12px;">✅</div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:17px;color:var(--rc-green);">All cycles paid!</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:8px;">${s.name} has no outstanding dues.</div>
+        <div class="modal-footer" style="justify-content:center;margin-top:20px;">
+          <button class="btn btn-ghost" onclick="closeModal('modalPay')">Close</button>
+          <button class="btn btn-primary" onclick="openFeeHistory(${s.id})">📋 View History</button>
+        </div>
+      </div>`;
+    return;
+  }
   document.getElementById("payModalContent").innerHTML=`
     <div class="pay-student-header">${avatarHTML(s,48)}<div>
-      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;">${s.name}</div>
-      <div class="mono c-muted" style="font-size:12px;">${s.roll} · ${trainerBadge(t)} · ${CUR()} ${s.fee.toLocaleString("en-IN")}/cycle</div>
+      <div style="font-weight:700;font-size:16px;">${s.name}</div>
+      <div class="mono c-muted" style="font-size:12px;">${s.roll} · ${trainerBadge(t)}</div>
     </div></div>
-    <div style="background:var(--surface2);border-radius:8px;padding:16px;margin-bottom:16px;">
-      <div class="mono c-dim" style="font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Unpaid Cycles</div>
-      ${unpaid.map(c=>`<div class="cycle-row"><div><div style="font-size:13px;font-weight:500;">Cycle ${c}</div><div class="mono c-dim" style="font-size:11px;">Classes ${(c-1)*CLASSES_PER_FEE()+1}–${c*CLASSES_PER_FEE()}</div></div><div class="mono c-red" style="font-size:14px;font-weight:600;">${CUR()} ${s.fee.toLocaleString("en-IN")}</div></div>`).join("")}
-      <div class="cycle-total"><span>Total Due</span><span class="mono c-red">${CUR()} ${total.toLocaleString("en-IN")}</span></div>
+
+    <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;margin-bottom:10px;">
+        ${unpaid.length} Unpaid Cycle${unpaid.length>1?"s":""} — Select to collect
+      </div>
+      ${unpaid.map(c=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(248,113,113,0.15);">
+          <input type="checkbox" id="cyc_${c}" data-cycle="${c}" checked style="accent-color:var(--rc-red);width:16px;height:16px;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;">Cycle ${c}
+              <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px;">Classes ${(c-1)*CLASSES_PER_FEE()+1}–${c*CLASSES_PER_FEE()}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:var(--muted);">${CUR()}</span>
+            <input type="number" id="amt_${c}" value="${s.fee}" min="0" step="1"
+              style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-family:'Space Mono',monospace;font-size:13px;text-align:right;"
+              oninput="updatePayTotal()">
+          </div>
+        </div>`).join("")}
+      <div class="cycle-total" style="margin-top:10px;padding-top:10px;">
+        <span style="font-size:13px;font-weight:600;">Total</span>
+        <span class="mono c-red" style="font-size:15px;font-weight:700;" id="payTotalDisplay">${CUR()} ${(unpaid.length*s.fee).toLocaleString("en-IN")}</span>
+      </div>
     </div>
-    <div class="form-group"><label class="form-label">Payment Mode</label>
-      <select class="form-input" id="payModeSelect">${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option>${m}</option>`).join("")}</select>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Payment Mode</label>
+        <select class="form-input" id="payModeSelect">
+          ${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option>${m}</option>`).join("")}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Payment Date</label>
+        <input class="form-input" type="date" id="payDateInput" value="${todayStr()}">
+      </div>
     </div>
+    <div class="form-group">
+      <label class="form-label">Note / Reference (optional)</label>
+      <input class="form-input" id="payNoteInput" placeholder="e.g. UPI ref: 123456, Cash received">
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPay')">Cancel</button>
-      <button class="btn btn-primary" onclick="recordPayments(${JSON.stringify(unpaid)})">✓ Collect ${CUR()} ${total.toLocaleString("en-IN")}</button>
+      <button class="btn btn-ghost" onclick="openFeeHistory(${s.id})">📋 History</button>
+      <button class="btn btn-primary" id="payCollectBtn" onclick="recordPayments()">✓ Collect</button>
     </div>`;
+  updatePayTotal();
 }
-function recordPayments(unpaid){
+
+function updatePayTotal(){
   const s=students.find(x=>x.id===payStudentId);if(!s)return;
-  // Recalculate total at call time — never trust stale HTML-baked values
-  const total=unpaid.length*s.fee;
+  const checks=document.querySelectorAll("[id^='cyc_']");
+  let total=0;
+  checks.forEach(cb=>{
+    if(cb.checked){
+      const c=cb.dataset.cycle;
+      const amt=parseFloat(document.getElementById("amt_"+c)?.value)||0;
+      total+=amt;
+    }
+  });
+  const el=document.getElementById("payTotalDisplay");
+  if(el) el.textContent=CUR()+" "+total.toLocaleString("en-IN");
+  const btn=document.getElementById("payCollectBtn");
+  if(btn) btn.textContent="✓ Collect "+CUR()+" "+total.toLocaleString("en-IN");
+}
+function recordPayments(){
+  const s=students.find(x=>x.id===payStudentId);if(!s)return;
   const mode=document.getElementById("payModeSelect")?.value||"Cash";
+  const date=document.getElementById("payDateInput")?.value||todayStr();
+  const note=document.getElementById("payNoteInput")?.value.trim()||"";
+  // Collect only checked cycles with their individual amounts
+  const checks=document.querySelectorAll("[id^='cyc_']");
+  const collected=[];
+  let total=0;
+  checks.forEach(cb=>{
+    if(cb.checked){
+      const c=parseInt(cb.dataset.cycle);
+      const amt=parseFloat(document.getElementById("amt_"+c)?.value)||s.fee;
+      collected.push({cycle:c,amount:amt});
+      total+=amt;
+    }
+  });
+  if(!collected.length){showToast("Select at least one cycle to collect","warn");return;}
   if(!feePayments[s.id])feePayments[s.id]=[];
-  unpaid.forEach(c=>feePayments[s.id].push({cycle:c,amount:s.fee,mode,date:todayStr()}));
+  collected.forEach(({cycle,amount})=>feePayments[s.id].push({cycle,amount,mode,date,note,id:Date.now()+cycle}));
   saveAll();closeModal("modalPay");
-  showToast(CUR()+" "+total.toLocaleString("en-IN")+" collected for "+s.name+"!","success");
+  showToast(CUR()+" "+total.toLocaleString("en-IN")+" collected from "+s.name,"success");
   if(s.phone&&confirm("Send WhatsApp receipt to "+s.name+"?")) sendWhatsApp(s.id,"receipt");
   if(currentPage==="admin-fees")renderAdminFees();
   if(currentPage==="admin-dashboard")renderAdminDashboard();
