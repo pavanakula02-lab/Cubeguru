@@ -582,7 +582,7 @@ select.form-input option{background:var(--surface);}
             <select class="form-input" id="filterTrainer" onchange="renderAdminStudents()" style="width:160px;padding:7px 12px;font-size:13px;">
               <option value="">All Trainers</option>
             </select>
-            <input class="search-input" id="adminStudentSearch" placeholder="🔍 Search..." oninput="renderAdminStudents()">
+            <input class="search-input" id="adminStudentSearch" placeholder="🔍 Search..." oninput="debouncedRenderStudents()">
           </div>
         </div>
         <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Roll</th><th>Trainer</th><th>Days</th><th>Time</th><th>Fee/Cycle</th><th>Attended</th><th>Att %</th><th>Status</th><th>Actions</th></tr></thead><tbody id="adminStudentsBody"></tbody></table></div>
@@ -623,7 +623,7 @@ select.form-input option{background:var(--surface);}
         <div class="card-header" style="flex-wrap:wrap;gap:8px;">
           <span class="card-title">Fee Status — All Students</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input class="search-input" id="adminFeeSearch" placeholder="🔍 Search student..." oninput="renderAdminFees()" style="width:160px;">
+            <input class="search-input" id="adminFeeSearch" placeholder="🔍 Search student..." oninput="debouncedRenderFees()" style="width:160px;">
             <select class="form-input" id="adminFeeTrainerFilter" onchange="renderAdminFees()" style="width:150px;padding:7px 12px;font-size:13px;">
               <option value="">All Trainers</option>
             </select>
@@ -1829,6 +1829,20 @@ function updateFeesDot(){
   if(currentUser) buildMobileNav();
 }
 
+
+// ── Debounce utility ──────────────────────────────────────────────────────────
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms||300);};}
+const debouncedRenderStudents=debounce(()=>renderAdminStudents(),250);
+const debouncedRenderFees=debounce(()=>renderAdminFees(),250);
+
+
+// ── Copy to clipboard ─────────────────────────────────────────────────────────
+async function copyToClipboard(text,label){
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){ const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta); }
+  showToast((label||"Text")+" copied ✓","success");
+}
+
 // ══ ADMIN DASHBOARD ════════════════════════════════════════════════════════════
 function renderAdminDashboard(){
   const today=todayStr(),dow=getDow(today);
@@ -2331,7 +2345,14 @@ function _saveStudent(){
   const name=document.getElementById("s_name").value.trim(),roll=document.getElementById("s_roll").value.trim(),fee=parseInt(document.getElementById("s_fee").value);
   const start=document.getElementById("s_start").value,end=document.getElementById("s_end").value;
   const trainerId=parseInt(document.getElementById("s_trainer").value)||null;
-  if(!name||!roll||!fee){showToast("Fill Name, Roll, and Fee","error");return;}
+  let hasErr=false;
+  [["s_name","Name"],["s_roll","Roll"],["s_fee","Fee"]].forEach(([id,lbl])=>{
+    const el=document.getElementById(id);
+    const empty=!el?.value.trim()||!el?.value;
+    if(el) el.classList.toggle("input-error",empty);
+    if(empty) hasErr=true;
+  });
+  if(hasErr){showToast("Please fill all required fields","error");return;}
   // Check duplicate roll number
   const rollDup=students.find(s=>s.roll===roll&&s.id!==editStudentId);
   if(rollDup){showToast("Roll number "+roll+" is already used by "+rollDup.name,"error");return;}
