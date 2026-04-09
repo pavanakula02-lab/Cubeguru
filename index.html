@@ -1064,6 +1064,20 @@ let instSettings = {};
 function getInst(key){ return instSettings[key] ?? DEFAULT_SETTINGS[key]; }
 function saveInst(){ lsSave(INST_KEY, instSettings); }
 function loadInst(){ instSettings = lsGet(INST_KEY, {...DEFAULT_SETTINGS}); }
+
+// Normalize feePayments data — coerce string cycles to Number, add missing ids
+// Runs after every load/pull to ensure data consistency regardless of source
+function normalizeFeePayments(){
+  let changed=false;
+  Object.keys(feePayments).forEach(sid=>{
+    (feePayments[sid]||[]).forEach((p,i)=>{
+      if(typeof p.cycle!=="number"){ p.cycle=Number(p.cycle); changed=true; }
+      if(typeof p.amount!=="number"){ p.amount=Number(p.amount)||0; changed=true; }
+      if(!p.id){ p.id="p"+Date.now()+"c"+p.cycle+"i"+i; changed=true; }
+    });
+  });
+  if(changed){ lsSave("ct6_fees",feePayments); }
+}
 function CLASSES_PER_FEE(){ return parseInt(getInst("classesPerFee")) || 4; }
 // Aliases for readability
 function T(){ return getInst("trainerLabel"); }   // "Trainer"
@@ -1146,6 +1160,7 @@ async function pullFromSheet(silent){
       }
         if(d.puzzleTypes&&d.puzzleTypes.length){ puzzleTypes=d.puzzleTypes; lsSave("ct_puzzles",puzzleTypes); }
         if(d.studentProgress&&Object.keys(d.studentProgress).length){ studentProgress=d.studentProgress; lsSave("ct_progress",studentProgress); }
+        normalizeFeePayments();
         lsSave("ct6_trainers",trainers); lsSave("ct6_students",students);
         lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
         setSyncTs(sheetTs); setSyncState("ok","Pulled "+fmtNow());
@@ -1471,13 +1486,20 @@ function getAttendedDates(sid){
 }
 function getFeeStatus(sid){
   const att=getAttendedDates(sid),total=att.length;
-  const paidCycles=new Set((feePayments[sid]||[]).map(p=>p.cycle));
+  // Normalize cycles to Number — data from sheet may come back as strings
+  const paidCycles=new Set((feePayments[sid]||[]).map(p=>Number(p.cycle)));
   const completed=Math.floor(total/CLASSES_PER_FEE());
-  let pending=0;for(let c=1;c<=completed;c++)if(!paidCycles.has(c))pending++;
+  let pending=0;
+  for(let c=1;c<=completed;c++) if(!paidCycles.has(c)) pending++;
   const rem=total%CLASSES_PER_FEE();
-  return{totalAttended:total,completedCycles:completed,paidCycles,pendingCycles:pending,
-    classesInCycle:total===0?0:rem===0?CLASSES_PER_FEE():rem,
-    classesUntilDue:total===0?CLASSES_PER_FEE():rem===0?0:CLASSES_PER_FEE()-rem};
+  return{
+    totalAttended:total,
+    completedCycles:completed,
+    paidCycles,
+    pendingCycles:pending,
+    classesInCycle: total===0 ? 0 : rem===0 ? CLASSES_PER_FEE() : rem,
+    classesUntilDue: total===0 ? CLASSES_PER_FEE() : rem===0 ? 0 : CLASSES_PER_FEE()-rem
+  };
 }
 function getTrainer(id){return trainers.find(t=>t.id===id);}
 function myStudents(){return students.filter(s=>s.trainerId===currentUser?.trainerId);}
@@ -2273,6 +2295,17 @@ function deleteStudent(id){
 }
 
 
+
+// ── Refresh all fee-related UI after any payment change ──────────────────────
+function refreshFeeViews(){
+  updateFeesDot();
+  if(currentPage==="admin-fees")     renderAdminFees();
+  if(currentPage==="admin-dashboard")renderAdminDashboard();
+  if(currentPage==="admin-students") renderAdminStudents();
+  if(currentPage==="trainer-dashboard") renderTrainerDashboard();
+  if(currentPage==="trainer-attendance") renderTrainerAttendance();
+}
+
 // ══ FEE HISTORY MODAL ══════════════════════════════════════════════════════════
 function openFeeHistory(sid){
   payStudentId=sid;
@@ -2310,35 +2343,41 @@ function renderFeeHistory(){
       <div style="display:grid;grid-template-columns:60px 1fr 90px 80px 80px 36px;gap:0;background:var(--surface2);padding:8px 12px;font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">
         <span>Cycle</span><span>Date & Mode</span><span>Amount</span><span>Mode</span><span>Note</span><span></span>
       </div>
-      ${pays.map(p=>`
-        <div id="fhr_${p.id||p.cycle}" style="display:grid;grid-template-columns:60px 1fr 90px 80px 80px 36px;gap:0;padding:10px 12px;border-top:1px solid var(--border);align-items:center;" class="fee-hist-row">
+      ${pays.map((p,pi)=>{
+        // Use a safe DOM-friendly string key — never embed raw IDs in JS inline attrs
+        const safeKey=`${s.id}_${pi}`;
+        return`
+        <div id="fhr_${safeKey}" style="display:grid;grid-template-columns:60px 1fr 90px 90px 1fr 36px;gap:0;padding:10px 12px;border-top:1px solid var(--border);align-items:center;" class="fee-hist-row">
           <span class="mono" style="font-size:13px;font-weight:700;color:var(--rc-blue);">#${p.cycle}</span>
-          <span style="font-size:12px;">
-            <input type="date" value="${p.date}" style="border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--surface2);color:var(--text);"
-              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'date',this.value,${s.id})">
+          <span>
+            <input type="date" value="${p.date||''}" data-key="${safeKey}" data-field="date"
+              style="border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11px;background:var(--surface2);color:var(--text);width:100%;"
+              onchange="editPaymentByKey('${safeKey}','date',this.value)">
           </span>
           <span>
             <div style="display:flex;align-items:center;gap:3px;">
               <span style="font-size:11px;color:var(--muted);">${CUR()}</span>
-              <input type="number" value="${p.amount}" min="0" style="width:68px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'Space Mono',monospace;background:var(--surface2);color:var(--text);"
-                onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'amount',parseFloat(this.value),${s.id})">
+              <input type="number" value="${p.amount}" min="0"
+                style="width:68px;border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:12px;font-family:'Space Mono',monospace;background:var(--surface2);color:var(--text);"
+                onchange="editPaymentByKey('${safeKey}','amount',parseFloat(this.value)||0)">
             </div>
           </span>
           <span>
-            <select style="border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:11px;background:var(--surface2);color:var(--text);"
-              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'mode',this.value,${s.id})">
+            <select style="border:1px solid var(--border);border-radius:5px;padding:4px 5px;font-size:11px;background:var(--surface2);color:var(--text);width:100%;"
+              onchange="editPaymentByKey('${safeKey}','mode',this.value)">
               ${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option ${p.mode===m?"selected":""}>${m}</option>`).join("")}
             </select>
           </span>
           <span>
-            <input type="text" value="${p.note||""}" placeholder="note" style="width:72px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--surface2);color:var(--text);"
-              onchange="editPaymentField(${p.id||p.cycle+'_'+p.cycle},'note',this.value,${s.id})">
+            <input type="text" value="${p.note||''}" placeholder="note"
+              style="width:100%;border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11px;background:var(--surface2);color:var(--text);"
+              onchange="editPaymentByKey('${safeKey}','note',this.value)">
           </span>
           <span style="text-align:center;">
-            <button onclick="deletePayment(${p.id||p.cycle+'_'+p.cycle},${s.id})" title="Delete payment"
-              style="background:none;border:none;color:var(--rc-red);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;">✕</button>
+            <button onclick="deletePaymentByKey('${safeKey}')" title="Delete"
+              style="background:none;border:none;color:var(--rc-red);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;line-height:1;">✕</button>
           </span>
-        </div>`).join("")}
+        </div>`;}).join("")}
     </div>`:`
     <div style="text-align:center;padding:24px;color:var(--dim);font-size:13px;border:1px dashed var(--border);border-radius:10px;margin-bottom:14px;">
       No payments recorded yet.
@@ -2350,28 +2389,51 @@ function renderFeeHistory(){
     </div>`;
 }
 
-function editPaymentField(pid, field, value, sid){
-  const pays=feePayments[sid]||[];
-  // pid can be the payment's .id property or a fallback cycle-based key
-  const p=pays.find(x=>x.id===pid)||pays.find(x=>(x.cycle+"_"+x.cycle)===String(pid));
-  if(!p){showToast("Payment record not found","error");return;}
-  p[field]=value;
-  feePayments[sid]=pays;
-  saveAll();
-  showToast("Payment updated","success");
-  if(currentPage==="admin-fees") renderAdminFees();
+// safeKey = "studentId_paymentIndex" — the index is into the sorted pays array shown in UI
+function _resolvePayment(safeKey){
+  // safeKey format: "STUDENTID_INDEX" where INDEX is position in sorted (desc date) array
+  const parts=safeKey.split("_");
+  const sid=Number(parts[0]);
+  const idx=Number(parts[1]);
+  const pays=(feePayments[sid]||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const p=pays[idx];
+  return{sid,pays:feePayments[sid]||[],sorted:pays,idx,p};
 }
 
-function deletePayment(pid, sid){
-  if(!confirm("Delete this payment record? The cycle will be marked unpaid again."))return;
-  const pays=feePayments[sid]||[];
-  feePayments[sid]=pays.filter(p=>p.id!==pid&&!((p.cycle+"_"+p.cycle)===String(pid)));
+function editPaymentByKey(safeKey, field, value){
+  const {sid,pays,sorted,idx,p}=_resolvePayment(safeKey);
+  if(!p){showToast("Payment not found","error");return;}
+  // Find this payment in the original unsorted array by reference equality
+  const realIdx=pays.indexOf(p);
+  if(realIdx===-1){
+    // Fallback: match by cycle+date+amount
+    const fi=pays.findIndex(x=>Number(x.cycle)===Number(p.cycle)&&x.date===p.date&&Number(x.amount)===Number(p.amount));
+    if(fi===-1){showToast("Could not locate payment","error");return;}
+    pays[fi][field]=field==="amount"?Number(value):value;
+  } else {
+    pays[realIdx][field]=field==="amount"?Number(value):value;
+  }
+  feePayments[sid]=pays;
   saveAll();
-  showToast("Payment deleted","success");
-  renderFeeHistory();
+  showToast("Payment updated ✓","success");
   if(currentPage==="admin-fees") renderAdminFees();
   updateFeesDot();
 }
+
+function deletePaymentByKey(safeKey){
+  if(!confirm("Delete this payment? The cycle will show as unpaid again."))return;
+  const {sid,pays,p}=_resolvePayment(safeKey);
+  if(!p){showToast("Payment not found","error");return;}
+  feePayments[sid]=pays.filter(x=>x!==p);
+  saveAll();
+  showToast("Payment deleted","success");
+  renderFeeHistory();
+  refreshFeeViews();
+}
+
+// Keep old names as aliases for any remaining references
+function editPaymentField(pid,field,value,sid){ editPaymentByKey(sid+"_0",field,value); }
+function deletePayment(pid,sid){ deletePaymentByKey(sid+"_0"); }
 
 // ══ PAY MODAL ══════════════════════════════════════════════════════════════════
 function openPayModal(sid){payStudentId=sid;renderPayModal();openModal("modalPay");}
@@ -2483,13 +2545,12 @@ function recordPayments(){
   });
   if(!collected.length){showToast("Select at least one cycle to collect","warn");return;}
   if(!feePayments[s.id])feePayments[s.id]=[];
-  collected.forEach(({cycle,amount})=>feePayments[s.id].push({cycle,amount,mode,date,note,id:Date.now()+cycle}));
+  collected.forEach(({cycle,amount})=>feePayments[s.id].push({cycle:Number(cycle),amount:Number(amount),mode,date,note,id:'p'+Date.now()+'c'+cycle}));
   saveAll();closeModal("modalPay");
   showToast(CUR()+" "+total.toLocaleString("en-IN")+" collected from "+s.name,"success");
+  // Refresh all fee-related views regardless of current page
+  refreshFeeViews();
   if(s.phone&&confirm("Send WhatsApp receipt to "+s.name+"?")) sendWhatsApp(s.id,"receipt");
-  if(currentPage==="admin-fees")renderAdminFees();
-  if(currentPage==="admin-dashboard")renderAdminDashboard();
-  updateFeesDot();
 }
 
 // ══ MODAL HELPERS ══════════════════════════════════════════════════════════════
@@ -3293,6 +3354,7 @@ async function init(){
   if(saved){
     trainers=saved; students=lsGet("ct6_students",[]);
     attendance=lsGet("ct6_att",{}); feePayments=lsGet("ct6_fees",{});
+    normalizeFeePayments();
   } else {
     // Don't seedData() yet — wait to see what the sheet returns
     trainers=[]; students=[]; attendance={}; feePayments={};
