@@ -517,6 +517,7 @@ select.form-input option{background:var(--surface);}
     <button class="logout-btn" onclick="openChangePassword()" style="color:var(--accent);border-color:var(--accent-border);">🔑 Change Password</button>
     <button class="logout-btn" onclick="doLogout()">Sign out</button>
   </div>
+  <div id="mobileSyncDot" style="display:none;width:8px;height:8px;border-radius:50%;background:#4a5068;position:fixed;top:10px;right:10px;z-index:200;" title="Sync status"></div>
 </div>
 
 <div class="layout">
@@ -584,7 +585,7 @@ select.form-input option{background:var(--surface);}
             <input class="search-input" id="adminStudentSearch" placeholder="🔍 Search..." oninput="renderAdminStudents()">
           </div>
         </div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Roll</th><th>Trainer</th><th>Days</th><th>Time</th><th>Fee/Cycle</th><th>Attended</th><th>Status</th><th>Actions</th></tr></thead><tbody id="adminStudentsBody"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Roll</th><th>Trainer</th><th>Days</th><th>Time</th><th>Fee/Cycle</th><th>Attended</th><th>Att %</th><th>Status</th><th>Actions</th></tr></thead><tbody id="adminStudentsBody"></tbody></table></div>
       </div>
     </div>
 
@@ -596,7 +597,9 @@ select.form-input option{background:var(--surface);}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <div class="date-nav">
           <button class="date-nav-btn" onclick="changeAdminAttDate(-1)">‹</button>
-          <div class="date-display" id="adminAttDateDisplay"></div>
+          <div class="date-display" id="adminAttDateDisplay" onclick="document.getElementById('adminAttDatePicker').showPicker?document.getElementById('adminAttDatePicker').showPicker():document.getElementById('adminAttDatePicker').click()" style="cursor:pointer;position:relative;">
+            <input type="date" id="adminAttDatePicker" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;" onchange="adminAttDate=this.value;renderAdminAttendance();">
+          </div>
           <button class="date-nav-btn" onclick="changeAdminAttDate(1)">›</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="adminAttDate=todayStr();renderAdminAttendance()">Today</button>
@@ -617,11 +620,19 @@ select.form-input option{background:var(--surface);}
       </div>
       <div class="stats-grid" id="adminFeeStats"></div>
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;">
           <span class="card-title">Fee Status — All Students</span>
-          <select class="form-input" id="adminFeeTrainerFilter" onchange="renderAdminFees()" style="width:160px;padding:7px 12px;font-size:13px;">
-            <option value="">All Trainers</option>
-          </select>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input class="search-input" id="adminFeeSearch" placeholder="🔍 Search student..." oninput="renderAdminFees()" style="width:160px;">
+            <select class="form-input" id="adminFeeTrainerFilter" onchange="renderAdminFees()" style="width:150px;padding:7px 12px;font-size:13px;">
+              <option value="">All Trainers</option>
+            </select>
+            <select class="form-input" id="adminFeeStatusFilter" onchange="renderAdminFees()" style="width:120px;padding:7px 12px;font-size:13px;">
+              <option value="">All Status</option>
+              <option value="due">Due only</option>
+              <option value="paid">Paid up</option>
+            </select>
+          </div>
         </div>
         <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Trainer</th><th>Fee/Cycle</th><th>Attended</th><th>Cycle Progress</th><th>Cycles Due</th><th>Amount Due</th><th>Action</th></tr></thead><tbody id="adminFeeBody"></tbody></table></div>
       </div>
@@ -726,12 +737,15 @@ select.form-input option{background:var(--surface);}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-wa" onclick="sendReminderToAll()" style="padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">Remind Today</button>
           <button class="btn btn-blue btn-sm" onclick="trainerMarkAll('present')">All Present</button>
+          <button class="btn btn-ghost btn-sm" onclick="trainerMarkUnmarkedAbsent()" style="color:var(--rc-red);border-color:rgba(230,57,70,.25);">Unmarked → Absent</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <div class="date-nav">
           <button class="date-nav-btn" onclick="changeTrainerAttDate(-1)">‹</button>
-          <div class="date-display" id="trainerAttDateDisplay"></div>
+          <div class="date-display" id="trainerAttDateDisplay" onclick="document.getElementById('trainerAttDatePicker').showPicker?document.getElementById('trainerAttDatePicker').showPicker():document.getElementById('trainerAttDatePicker').click()" style="cursor:pointer;position:relative;">
+            <input type="date" id="trainerAttDatePicker" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;" onchange="trainerAttDate=this.value;renderTrainerAttendance();">
+          </div>
           <button class="date-nav-btn" onclick="changeTrainerAttDate(1)">›</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="trainerAttDate=todayStr();renderTrainerAttendance()">Today</button>
@@ -1105,6 +1119,10 @@ function lsSave(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 const SYNC_URL_KEY = "ct6_sync_url";
 const SYNC_TS_KEY  = "ct6_sync_ts";
 let _syncDebounce = null;
+let _pendingSync = false;
+window.addEventListener("beforeunload", e => {
+  if(_pendingSync){ e.preventDefault(); e.returnValue="Changes not yet synced to Google Sheet. Leave anyway?"; }
+});
 
 
 function getSyncUrl(){ return lsGet(SYNC_URL_KEY, "") || ""; }
@@ -1115,7 +1133,7 @@ function setSyncTs(t){ lsSave(SYNC_TS_KEY, t); }
 function scheduleSyncPush(){
   if(!getSyncUrl()) return;
   clearTimeout(_syncDebounce);
-  _syncDebounce = setTimeout(()=>pushToSheet(true), 1500);
+  _pendingSync=true; _syncDebounce = setTimeout(()=>pushToSheet(true), 1500);
 }
 
 function getSyncBaseUrl(){
@@ -1134,7 +1152,7 @@ async function pushToSheet(silent){
     const encoded = encodeURIComponent(JSON.stringify(payload));
     const r = await fetch(url + (url.includes("?")?"&":"?") + "action=push&data=" + encoded, {method:"GET",redirect:"follow"});
     const j = JSON.parse(await r.text());
-    if(j.ok){ setSyncTs(ts); setSyncState("ok","Synced "+fmtNow()); if(!silent) showToast("Pushed to Google Sheet ✓","success"); }
+    if(j.ok){ _pendingSync=false; setSyncTs(ts); setSyncState("ok","Synced "+fmtNow()); if(!silent) showToast("Pushed to Google Sheet ✓","success"); }
     else { setSyncState("err","Push failed"); if(!silent) showToast("Sheet error: "+(j.error||"unknown"),"error"); }
   } catch(e){ setSyncState("err","Offline / error"); if(!silent) showToast("Push failed: "+e.message,"error"); }
 }
@@ -1175,6 +1193,9 @@ function setSyncState(state,label){
   const dot=document.getElementById("syncDot"), lbl=document.getElementById("syncLabel"), wrap=document.getElementById("syncStatus");
   if(!dot) return;
   wrap.style.display="flex"; lbl.textContent=label;
+  // Also show sync state in a small mobile-friendly indicator
+  const mob=document.getElementById("mobileSyncDot");
+  if(mob){ mob.style.display=window.innerWidth<=768?"block":"none"; mob.style.background=colors[state]||colors.off; mob.title=label; }
   const colors={ok:"#6ee7b7",err:"#f87171",syncing:"#f59e0b",off:"#4a5068"};
   dot.style.background=colors[state]||colors.off;
   dot.style.boxShadow=state==="ok"?"0 0 6px #6ee7b7":state==="err"?"0 0 6px #f87171":"none";
@@ -1431,7 +1452,7 @@ function sendReminderToAll(){
     const s=withPhone[i++];
     const t=getTrainer(s.trainerId);
     const tName=t?t.name.split(" ")[0]:"Trainer";
-    const msg="Hi "+s.name.split(" ")[0]+", this is "+tName+". Reminder: You have *Rubik's Cube class today* at "+fmt12(s.start)+"! Please come on time. See you soon!";
+    const msg="Hi "+s.name.split(" ")[0]+", this is "+tName+". Reminder: You have *"+INAME()+" class today* at "+fmt12(s.start)+"! Please come on time. See you soon!";
     waOpen(s.phone, msg);
     setTimeout(sendNext,1500);
   }
@@ -1603,6 +1624,7 @@ function doLogin(){
   }
 }
 function doLogout(){
+  stopAutoRefresh();
   currentUser=null;
   document.getElementById("loginScreen").style.display="flex";
   document.getElementById("appShell").style.display="none";
@@ -1624,6 +1646,7 @@ function launchApp(){
     setTimeout(()=>forcePasswordChange(), 300);
     return;
   }
+  startAutoRefresh();
   if(currentUser.role==="admin")showPage("admin-dashboard");
   else showPage("trainer-dashboard");
 }
@@ -1912,17 +1935,27 @@ function renderAdminStudents(){
       <td>${s.start&&s.end?`<span class="time-chip">${fmt12(s.start)} – ${fmt12(s.end)}</span>`:"—"}</td>
       <td class="mono">${CUR()} ${s.fee.toLocaleString("en-IN")}</td>
       <td class="mono c-blue">${fs.totalAttended}</td>
+      <td>${(()=>{const p=fs.totalAttended,a=Object.values(attendance).filter(r=>r[s.id]==="absent").length;const pct=p+a>0?Math.round(p/(p+a)*100):null;return pct===null?`<span class="c-dim">—</span>`:`<span style="color:${pct>=80?"var(--rc-green)":pct>=60?"var(--rc-orange)":"var(--rc-red)"};font-family:'Space Mono',monospace;font-size:12px;font-weight:700;">${pct}%</span>`;})()} </td>
       <td><span class="badge ${isDue?"badge-due":"badge-ok"}">${isDue?fs.pendingCycles+" due":"Paid up"}</span></td>
       <td><div style="display:flex;gap:6px;">
         <button class="btn btn-ghost btn-sm" onclick="openEditStudent(${s.id})">✎ Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id})">✕</button>
       </div></td>
     </tr>`;
-  }).join(""):emptyRow(9,"No students found");
+  }).join(""):emptyRow(10,"No students found");
 }
 
 // ══ ADMIN ATTENDANCE ══════════════════════════════════════════════════════════
 function changeAdminAttDate(n){adminAttDate=offsetDate(adminAttDate,n);renderAdminAttendance();}
+function adminSetAtt(studentId,status,date){
+  if(!attendance[date])attendance[date]={};
+  if(status==="") delete attendance[date][studentId];
+  else attendance[date][studentId]=status;
+  lsSave("ct6_att",attendance);
+  scheduleSyncPush();
+  renderAdminAttendance();
+  showToast(status?"Marked "+status:"Attendance cleared","success");
+}
 function renderAdminAttendance(){
   document.getElementById("adminAttDateDisplay").textContent=fmtDate(adminAttDate);
   document.getElementById("adminAttCardTitle").textContent=`Attendance — ${fmtDate(adminAttDate)}`;
@@ -1936,7 +1969,14 @@ function renderAdminAttendance(){
     return`<tr>
       <td>${studentCell(s)}</td><td>${trainerBadge(t)}</td>
       <td><span class="time-chip">${fmt12(s.start)} – ${fmt12(s.end)}</span></td>
-      <td>${st?`<span class="badge badge-${st}">${st}</span>`:`<span class="c-dim" style="font-size:12px;">Not marked</span>`}</td>
+      <td>
+        <div class="att-toggle">
+          <button class="att-btn ${st==="present"?"present":""}" onclick="adminSetAtt(${s.id},'present','${adminAttDate}')">P</button>
+          <button class="att-btn ${st==="absent"?"absent":""}" onclick="adminSetAtt(${s.id},'absent','${adminAttDate}')">A</button>
+          <button class="att-btn ${st==="late"?"late":""}" onclick="adminSetAtt(${s.id},'late','${adminAttDate}')">L</button>
+          ${st?`<button class="att-btn" onclick="adminSetAtt(${s.id},'','${adminAttDate}')" title="Clear" style="font-size:10px;color:var(--muted);">✕</button>`:""}
+        </div>
+      </td>
       <td>${(st==="absent"||st==="late")?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'${st}')" style="display:inline-flex;align-items:center;gap:3px;">${WA_ICON} ${st}</button>`:fs.pendingCycles>0?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'fee')" style="display:inline-flex;align-items:center;gap:3px;">${WA_ICON} Fee</button>`:`<span class="c-dim" style="font-size:11px;">—</span>`}</td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),fs.pendingCycles>0?"#f87171":null)}</td>
       <td>${feeIndHTML(fs)}</td>
@@ -1955,7 +1995,15 @@ function renderAdminFees(){
     <div class="stat-card" style="--c:var(--rc-orange)"><div class="stat-label">Cycle Rule</div><div class="stat-value">${CLASSES_PER_FEE()} classes</div><div class="stat-sub">= 1 fee due</div></div>
   `;
   const tf=document.getElementById("adminFeeTrainerFilter")?.value;
-  let list=students.filter(s=>!tf||s.trainerId==tf);
+  const fs_filter=document.getElementById("adminFeeStatusFilter")?.value||"";
+  const fee_search=(document.getElementById("adminFeeSearch")?.value||"").toLowerCase();
+  let list=students.filter(s=>{
+    if(tf&&s.trainerId!=tf) return false;
+    if(fee_search&&!s.name.toLowerCase().includes(fee_search)&&!s.roll.toLowerCase().includes(fee_search)) return false;
+    if(fs_filter==="due"&&getFeeStatus(s.id).pendingCycles===0) return false;
+    if(fs_filter==="paid"&&getFeeStatus(s.id).pendingCycles>0) return false;
+    return true;
+  });
   document.getElementById("adminFeeBody").innerHTML=list.map(s=>{
     const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId),isDue=fs.pendingCycles>0;
     return`<tr style="${isDue?"background:rgba(248,113,113,0.03)":""}">
@@ -2092,6 +2140,7 @@ function renderTrainerAttendance(){
     const pBtn=`<button class="att-btn ${st==="present"?"present":""}" onclick="trainerSetAtt(${s.id},'present','${trainerAttDate}')">P</button>`;
     const aBtn=`<button class="att-btn ${st==="absent"?"absent":""}" onclick="trainerSetAtt(${s.id},'absent','${trainerAttDate}')">A</button>`;
     const lBtn=`<button class="att-btn ${st==="late"?"late":""}" onclick="trainerSetAtt(${s.id},'late','${trainerAttDate}')">L</button>`;
+    const clrBtn=st?`<button class="att-btn" onclick="trainerSetAtt(${s.id},'','${trainerAttDate}')" title="Clear" style="font-size:10px;color:var(--muted);">✕</button>`:"";
     const waType=st==="absent"?"absent":st==="late"?"late":fs.pendingCycles>0?"fee":"";
     const waLabel=waType==="fee"?"Fee due":waType==="absent"?"Absent":waType==="late"?"Late":"";
     return`<tr style="${isDue?"background:rgba(248,113,113,0.03)":""}">
@@ -2099,7 +2148,7 @@ function renderTrainerAttendance(){
       <td>${studentCell(s)}</td>
       <td><span class="time-chip">${fmt12(s.start)} – ${fmt12(s.end)}</span></td>
       <td>
-        <div class="att-toggle">${pBtn}${aBtn}${lBtn}</div>
+        <div class="att-toggle">${pBtn}${aBtn}${lBtn}${clrBtn}</div>
         ${waType?`<button class="btn-wa" style="margin-top:5px;display:block;" onclick="sendWhatsApp(${s.id},'${waType}')">${waLabel}</button>`:""}
       </td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--dim);margin-top:2px;">Total: ${fs.totalAttended}</div></td>
@@ -2112,7 +2161,7 @@ function trainerSetAtt(studentId,status,date){
   const s=students.find(x=>x.id===studentId);
   if(!s||s.trainerId!==currentUser.trainerId){showToast("Not authorized","error");return;}
   if(!attendance[date])attendance[date]={};
-  attendance[date][studentId]=status;
+  if(status==="") delete attendance[date][studentId]; else attendance[date][studentId]=status;
   lsSave("ct6_att",attendance);
   scheduleSyncPush();
   // Fee alert
@@ -2123,6 +2172,20 @@ function trainerSetAtt(studentId,status,date){
   }
   if(currentPage==="trainer-attendance")renderTrainerAttendance();
   if(currentPage==="trainer-dashboard")renderTrainerDashboard();
+}
+function trainerMarkUnmarkedAbsent(){
+  const dow=getDow(trainerAttDate);
+  const list=myStudents().filter(s=>s.days.includes(dow));
+  const rec=attendance[trainerAttDate]||{};
+  const unmarked=list.filter(s=>!rec[s.id]);
+  if(!unmarked.length){showToast("All students already marked","success");return;}
+  if(!confirm("Mark "+unmarked.length+" unmarked student(s) as absent?"))return;
+  if(!attendance[trainerAttDate])attendance[trainerAttDate]={};
+  unmarked.forEach(s=>{attendance[trainerAttDate][s.id]="absent";});
+  lsSave("ct6_att",attendance);
+  scheduleSyncPush();
+  renderTrainerAttendance();
+  showToast(unmarked.length+" students marked absent","success");
 }
 function trainerMarkAll(status){
   const dow=getDow(trainerAttDate);
@@ -2157,16 +2220,24 @@ function openAddTrainer(){editTrainerId=null;document.getElementById("trainerMod
 function openEditTrainer(id){
   const t=trainers.find(x=>x.id===id);if(!t)return;
   editTrainerId=id;document.getElementById("trainerModalTitle").textContent="Edit "+T();document.getElementById("trainerSaveBtn").textContent="Save Changes";
-  document.getElementById("t_name").value=t.name;document.getElementById("t_username").value=t.username;document.getElementById("t_password").value=t.password;document.getElementById("t_spec").value=t.spec||"";document.getElementById("t_phone").value=t.phone||"";
+  document.getElementById("t_name").value=t.name;document.getElementById("t_username").value=t.username;document.getElementById("t_password").value="";document.getElementById("t_password").placeholder="Leave blank to keep current password";document.getElementById("t_spec").value=t.spec||"";document.getElementById("t_phone").value=t.phone||"";
   openModal("modalTrainer");
 }
-function saveTrainer(){
-  const name=document.getElementById("t_name").value.trim(),user=document.getElementById("t_username").value.trim(),pass=document.getElementById("t_password").value;
-  if(!name||!user||!pass){showToast("Fill all required fields","error");return;}
+let _saving=false;
+function withSaveGuard(fn){
+  if(_saving)return;
+  _saving=true;
+  try{ fn(); } finally{ setTimeout(()=>{_saving=false;},800); }
+}
+function saveTrainer(){withSaveGuard(_saveTrainer);}
+function _saveTrainer(){
+  const name=document.getElementById("t_name").value.trim(),user=document.getElementById("t_username").value.trim(),pass=document.getElementById("t_password").value||"";
+  if(!name||!user){showToast("Fill all required fields","error");return;}
+  if(!editTrainerId&&!pass){showToast("Password is required for new trainers","error");return;}
   if(trainers.some(t=>t.username===user&&t.id!==editTrainerId)){showToast("Username already exists","error");return;}
   const tphone=document.getElementById("t_phone").value.trim();
   if(editTrainerId){
-    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass,spec:document.getElementById("t_spec").value.trim(),phone:tphone}:t);
+    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass||t.password,spec:document.getElementById("t_spec").value.trim(),phone:tphone}:t);
     showToast(`${name} updated!`,"success");
   } else {
     const id=Date.now();
@@ -2255,11 +2326,15 @@ function openEditStudent(id){
   populateTrainerFilters();document.getElementById("s_trainer").value=s.trainerId||"";
   buildDaySelector();updateSchedulePreview();openModal("modalStudent");
 }
-function saveStudent(){
+function saveStudent(){withSaveGuard(_saveStudent);}
+function _saveStudent(){
   const name=document.getElementById("s_name").value.trim(),roll=document.getElementById("s_roll").value.trim(),fee=parseInt(document.getElementById("s_fee").value);
   const start=document.getElementById("s_start").value,end=document.getElementById("s_end").value;
   const trainerId=parseInt(document.getElementById("s_trainer").value)||null;
   if(!name||!roll||!fee){showToast("Fill Name, Roll, and Fee","error");return;}
+  // Check duplicate roll number
+  const rollDup=students.find(s=>s.roll===roll&&s.id!==editStudentId);
+  if(rollDup){showToast("Roll number "+roll+" is already used by "+rollDup.name,"error");return;}
   if(!selectedDays.length){showToast("Select at least one class day","error");return;}
   const toMins=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
   if(toMins(start)>=toMins(end)){showToast("End time must be after start time","error");return;}
@@ -3290,6 +3365,18 @@ function renderPortalProgress(sid){
   }).join("");
 }
 
+function getNextClassDate(s){
+  // Find next occurrence of any of student's class days from today
+  const today=new Date(); today.setHours(0,0,0,0);
+  const dowMap={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+  const classDays=(s.days||[]).map(d=>dowMap[d]).filter(d=>d!==undefined);
+  if(!classDays.length) return null;
+  for(let i=0;i<=7;i++){
+    const d=new Date(today); d.setDate(today.getDate()+i);
+    if(classDays.includes(d.getDay())) return d;
+  }
+  return null;
+}
 function renderPortalSchedule(sid){
   if(!sid) sid=currentUser?.studentId;
   const s=students.find(x=>x.id===sid);
@@ -3297,6 +3384,7 @@ function renderPortalSchedule(sid){
   const el=document.getElementById("portalSchedule");
   if(!s){el.innerHTML="";return;}
   el.innerHTML=`
+    ${(()=>{const nc=getNextClassDate(s);return nc?`<div style="background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;"><span style="font-size:20px;">📅</span><div><div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px;">NEXT CLASS</div><div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;color:var(--rc-blue);">${nc.toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})} at ${fmt12(s.start)}</div></div></div>`:"";})()}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
       ${s.days.map(d=>`<span class="day-pill" style="font-size:13px;padding:4px 12px;">${d}</span>`).join("")}
     </div>
@@ -3318,6 +3406,25 @@ function renderPortalSchedule(sid){
 }
 
 // ══ INIT ═══════════════════════════════════════════════════════════════════════
+
+// ── Auto-refresh every 60s for multi-device sync ─────────────────────────────
+let _autoRefreshTimer = null;
+function startAutoRefresh(){
+  stopAutoRefresh();
+  _autoRefreshTimer = setInterval(async ()=>{
+    if(document.hidden) return; // Don't pull when tab is in background
+    const updated = await pullFromSheet(true);
+    if(updated && currentUser){
+      refreshFeeViews();
+      const renders={"admin-dashboard":renderAdminDashboard,"admin-trainers":renderTrainers,
+        "admin-students":renderAdminStudents,"admin-attendance":renderAdminAttendance,
+        "admin-fees":renderAdminFees,"trainer-dashboard":renderTrainerDashboard,
+        "trainer-attendance":renderTrainerAttendance,"trainer-students":renderTrainerStudents};
+      if(renders[currentPage]) renders[currentPage]();
+    }
+  }, 60000);
+}
+function stopAutoRefresh(){ clearInterval(_autoRefreshTimer); }
 
 // ── Loading splash ─────────────────────────────────────────────────────────────
 function showLoadingSplash(){
