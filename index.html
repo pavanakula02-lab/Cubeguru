@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>CubeTrack — Rubik's Class Manager</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#e63946" id="themeColorMeta">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CubeTrack">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Rubik's Cube class management — attendance, fees, progress">
+
+<!-- Apple touch icons (inline SVG fallback icons generated as data URIs) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%23e63946'/><text x='96' y='136' text-anchor='middle' font-size='100' font-family='Arial,sans-serif' font-weight='900' fill='white'>C</text></svg>">
+
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 /* ── RUBIK'S CUBETRACK THEME (light) ── */
@@ -395,9 +408,62 @@ select.form-input option{background:var(--surface);}
 @media(min-width:769px){
   #mobileNav{ display:none !important; }
 }
+
+/* ── PWA INSTALL BANNER ── */
+#pwaInstallBanner{
+  display:none;position:fixed;bottom:70px;left:12px;right:12px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;z-index:500;
+  box-shadow:0 4px 24px rgba(0,0,0,.12);
+  animation:slideUp .3s ease;
+}
+@media(min-width:500px){#pwaInstallBanner{left:auto;right:24px;width:340px;}}
+#pwaInstallBanner.show{display:flex;align-items:center;gap:12px;}
+.pwa-banner-icon{width:44px;height:44px;border-radius:10px;background:var(--rc-red);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Nunito',sans-serif;font-weight:900;font-size:20px;color:#fff;flex-shrink:0;}
+.pwa-banner-text{flex:1;}
+.pwa-banner-title{font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;}
+.pwa-banner-sub{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:1px;}
+.pwa-banner-actions{display:flex;gap:6px;flex-shrink:0;}
+.pwa-install-btn{padding:6px 14px;border-radius:8px;border:none;background:var(--rc-red);
+  color:#fff;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;}
+.pwa-dismiss-btn{padding:6px 8px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;}
+
+/* ── OFFLINE BANNER ── */
+#offlineBanner{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:9998;
+  background:#f59e0b;color:#fff;text-align:center;
+  font-size:12px;font-family:'Space Mono',monospace;
+  padding:6px 16px;font-weight:700;letter-spacing:.3px;
+}
+#offlineBanner.show{display:block;}
+
+/* ── SAFE AREA for notched phones ── */
+.main{padding-bottom:max(80px,calc(60px + env(safe-area-inset-bottom)));}
+#mobileNav{padding-bottom:env(safe-area-inset-bottom);}
+
 </style>
 </head>
 <body>
+
+<!-- ══ PWA INSTALL BANNER ══ -->
+<div id="pwaInstallBanner">
+  <div class="pwa-banner-icon">C</div>
+  <div class="pwa-banner-text">
+    <div class="pwa-banner-title">Install CubeTrack</div>
+    <div class="pwa-banner-sub">Add to home screen for quick access</div>
+  </div>
+  <div class="pwa-banner-actions">
+    <button class="pwa-install-btn" onclick="pwaInstall()">Install</button>
+    <button class="pwa-dismiss-btn" onclick="pwaDismiss()">✕</button>
+  </div>
+</div>
+
+<!-- ══ OFFLINE BANNER ══ -->
+<div id="offlineBanner">📵 You are offline — showing cached data</div>
+
 
 <!-- ══ LOGIN SCREEN ══ -->
 <div class="login-screen" id="loginScreen">
@@ -448,15 +514,20 @@ select.form-input option{background:var(--surface);}
     <!-- Welcome Banner -->
     <div id="portalWelcomeBanner" style="border-radius:14px;padding:20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;">
       <div id="portalBannerAvatar" style="width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:22px;flex-shrink:0;color:#fff;"></div>
-      <div>
+      <div style="flex:1;">
         <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:20px;" id="portalWelcomeName"></div>
         <div style="font-size:13px;opacity:.8;margin-top:2px;" id="portalWelcomeSub"></div>
       </div>
+      <div id="portalTrainerContact"></div>
     </div>
 
     <!-- Quick Stats -->
     <div class="stats-grid" id="portalStats" style="margin-bottom:20px;"></div>
+    <!-- Achievements -->
+    <div id="portalBadges"></div>
 
+    <!-- Monthly summary -->
+    <div id="portalMonthSummary" style="margin-bottom:16px;"></div>
     <!-- Classes Attended with dates -->
     <div class="card" style="margin-bottom:16px;">
       <div class="card-header">
@@ -543,6 +614,7 @@ select.form-input option{background:var(--surface);}
           <button class="btn-wa" onclick="sendReminderToAll()" style="padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">Class Reminders</button>
           <button class="btn-wa" onclick="sendFeeRemindersToAll()" style="padding:6px 12px;border-radius:8px;border-color:rgba(230,57,70,.4);background:rgba(230,57,70,.08);color:#b91c1c;display:inline-flex;align-items:center;gap:4px;">Fee Reminders</button>
           <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+          <button class="btn btn-ghost btn-sm" onclick="openHolidayManager()">🏖 Holidays</button>
         </div>
       </div>
       <div class="stats-grid" id="adminStats"></div>
@@ -576,6 +648,7 @@ select.form-input option{background:var(--surface);}
           <button class="btn-wa" onclick="sendReminderToAll()" style="padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:4px;">Class Reminders</button>
           <button class="btn-wa" onclick="sendFeeRemindersToAll()" style="padding:6px 12px;border-radius:8px;border-color:rgba(230,57,70,.4);background:rgba(230,57,70,.08);color:#b91c1c;display:inline-flex;align-items:center;gap:4px;">Fee Reminders</button>
           <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Add Student</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportStudentsCSV()" title="Download CSV">⬇ CSV</button>
         </div>
       </div>
       <div class="card">
@@ -642,7 +715,7 @@ select.form-input option{background:var(--surface);}
       <div class="card">
         <div class="card-header">
   <span class="card-title">Payment History</span>
-  <span style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">Last 20 entries — click ✎ to edit</span>
+  <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">Last 20 entries</span><button class="btn btn-ghost btn-sm" onclick="exportFeesCSV()">⬇ CSV</button><button class="btn btn-ghost btn-sm" onclick="exportAttendanceCSV()">⬇ Attendance</button></div>
 </div>
         <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Trainer</th><th>Cycle</th><th>Amount</th><th>Mode</th><th>Date</th><th>Note</th><th>Actions</th></tr></thead><tbody id="adminFeeHistoryBody"></tbody></table></div>
       </div>
@@ -656,7 +729,25 @@ select.form-input option{background:var(--surface);}
 
     <!-- Admin Reports -->
     <div id="page-admin-reports" class="page">
-      <div class="page-header"><div><div class="page-title">Reports</div><div class="page-sub">Summary by trainer & student</div></div></div>
+      <div class="page-header">
+        <div><div class="page-title">Reports</div><div class="page-sub" id="psReports">Summary by trainer & student</div></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="exportStudentsCSV()">⬇ Students CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportFeesCSV()">⬇ Fees CSV</button>
+        </div>
+      </div>
+
+      <!-- Monthly Revenue Chart -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <span class="card-title">📊 Monthly Revenue</span>
+          <span id="revenueChartMeta" style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;"></span>
+        </div>
+        <div style="padding:16px;" id="revenueChartWrap">
+          <canvas id="revenueChart" height="160"></canvas>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header"><span class="card-title">Trainer Performance</span></div>
         <div class="tbl-wrap"><table><thead><tr><th>Trainer</th><th>Students</th><th>Total Classes Held</th><th>Total Present</th><th>Avg Attendance %</th><th>Fee Collected</th><th>Fee Pending</th></tr></thead><tbody id="trainerReportBody"></tbody></table></div>
@@ -753,9 +844,10 @@ select.form-input option{background:var(--surface);}
         </div>
         <button class="btn btn-ghost btn-sm" onclick="trainerAttDate=todayStr();renderTrainerAttendance()">Today</button>
       </div>
+      <div id="attHolidayBannerT" style="display:none;align-items:center;gap:12px;padding:12px 18px;background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.25);border-radius:10px;margin-bottom:14px;color:var(--accent);font-weight:600;"><span></span></div>
       <div class="card">
         <div class="card-header"><span class="card-title" id="trainerAttCardTitle">My Students</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Student</th><th>Time</th><th>Mark Attendance</th><th>Alert</th><th>Cycle Progress</th><th>Fee Alert</th></tr></thead><tbody id="trainerAttBody"></tbody></table></div>
+        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Student</th><th>Time</th><th>Mark Attendance</th><th>Alert</th><th>Cycle Progress</th><th>Fee Alert</th><th>Note</th></tr></thead><tbody id="trainerAttBody"></tbody></table></div>
       </div>
     </div>
 
@@ -1404,7 +1496,7 @@ function sendWhatsApp(studentId, type){
   else if(type==="fee"){
     const fs=getFeeStatus(studentId);
     const due=fs.pendingCycles*s.fee;
-    msg="Hi "+firstName+", this is "+trainerName+". Your fee payment of *Rs."+due.toLocaleString("en-IN")+"* is pending ("+fs.pendingCycles+" cycle"+(fs.pendingCycles>1?"s":"")+" x Rs."+s.fee.toLocaleString("en-IN")+"). Please clear it at your earliest convenience. Thank you!";
+    msg="Hi "+firstName+", this is "+trainerName+". Your fee payment of *"+CUR()+" "+due.toLocaleString("en-IN")+"* is pending ("+fs.pendingCycles+" cycle"+(fs.pendingCycles>1?"s":"")+" x "+CUR()+" "+s.fee.toLocaleString("en-IN")+"). Please clear it at your earliest convenience. Thank you!";
   } else if(type==="milestone"){
     const fs=getFeeStatus(studentId);
     msg="Hi "+firstName+", this is "+trainerName+". Great work! You have completed *"+fs.totalAttended+" classes*. Your next fee cycle is now due (Rs."+s.fee.toLocaleString("en-IN")+"). Please arrange payment. Thank you!";
@@ -1613,13 +1705,13 @@ function doLogin(){
   err.style.display="none";
   if(loginRole==="admin"){
     if(user===ADMIN_USERNAME&&pass===getAdminPassword()){
-      currentUser={role:"admin"};launchApp();
+      currentUser={role:"admin"};saveSession();launchApp();
     } else {err.textContent="Invalid admin credentials";err.style.display="block";}
   } else if(loginRole==="parent"){
     // Roll number + parent phone
     const phone=pass.replace(/[^0-9]/g,"");
     const s=students.find(x=>x.roll===user&&x.parentPhone&&x.parentPhone.replace(/[^0-9]/g,"")===phone);
-    if(s){currentUser={role:"parent",studentId:s.id};launchParentPortal(s.id);}
+    if(s){currentUser={role:"parent",studentId:s.id};saveSession();launchParentPortal(s.id);}
     else{
       if(!students.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
       else if(!students.some(x=>x.roll===user)){ err.textContent="Roll number "+user+" not found. Check with your admin."; }
@@ -1628,7 +1720,7 @@ function doLogin(){
     }
   } else {
     const t=trainers.find(x=>x.username===user&&x.password===pass);
-    if(t){currentUser={role:"trainer",trainerId:t.id};launchApp();}
+    if(t){currentUser={role:"trainer",trainerId:t.id};saveSession();launchApp();}
     else{
       if(!trainers.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
       else if(!trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
@@ -1639,6 +1731,7 @@ function doLogin(){
 }
 function doLogout(){
   stopAutoRefresh();
+  clearSession();
   currentUser=null;
   document.getElementById("loginScreen").style.display="flex";
   document.getElementById("appShell").style.display="none";
@@ -1666,6 +1759,7 @@ function launchApp(){
   startAutoRefresh();
   if(currentUser.role==="admin")showPage("admin-dashboard");
   else showPage("trainer-dashboard");
+  setTimeout(handlePWAShortcuts, 300);
 }
 
 function forcePasswordChange(){
@@ -1860,6 +1954,310 @@ async function copyToClipboard(text,label){
   showToast((label||"Text")+" copied ✓","success");
 }
 
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+function downloadCSV(rows, filename){
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c==null?"":c).replace(/"/g,'""');
+    return s.includes(",")||s.includes('"')||s.includes('\n')?`"${s}"`:s;
+  }).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+  showToast("Downloaded "+filename,"success");
+}
+
+function exportStudentsCSV(){
+  const headers=["Roll","Name","Trainer","Days","Time","Fee/Cycle","Attended","Att%","Fee Status","Join Date","Status","Phone","Parent","Parent Phone","Notes"];
+  const rows=students.map(s=>{
+    const t=getTrainer(s.trainerId);
+    const fs=getFeeStatus(s.id);
+    const p=fs.totalAttended, ab=Object.values(attendance).filter(r=>r[s.id]==="absent").length;
+    const pct=p+ab>0?Math.round(p/(p+ab)*100):0;
+    return[s.roll,s.name,t?t.name:"",s.days.join("+"),fmt12(s.start)+"–"+fmt12(s.end),
+      s.fee,fs.totalAttended,pct+"%",fs.pendingCycles>0?fs.pendingCycles+" due":"Paid",
+      s.joinDate||"",s.status||"active",s.phone||"",s.parentName||"",s.parentPhone||"",s.notes||""];
+  });
+  downloadCSV([headers,...rows],"students_"+todayStr()+".csv");
+}
+
+function exportFeesCSV(){
+  const headers=["Student","Roll","Trainer","Cycle","Amount","Mode","Date","Note"];
+  const rows=students.flatMap(s=>{
+    const t=getTrainer(s.trainerId);
+    return(feePayments[s.id]||[]).map(p=>[s.name,s.roll,t?t.name:"",p.cycle,p.amount,p.mode||"",p.date,p.note||""]);
+  }).sort((a,b)=>b[6].localeCompare(a[6]));
+  downloadCSV([headers,...rows],"fee_payments_"+todayStr()+".csv");
+}
+
+function exportAttendanceCSV(){
+  const headers=["Date","Day","Student","Roll","Trainer","Status"];
+  const rows=[];
+  Object.entries(attendance).sort(([a],[b])=>b.localeCompare(a)).forEach(([date,rec])=>{
+    Object.entries(rec).forEach(([sid,status])=>{
+      const s=students.find(x=>x.id==sid);
+      if(!s) return;
+      const t=getTrainer(s.trainerId);
+      rows.push([date,getDow(date),s.name,s.roll,t?t.name:"",status]);
+    });
+  });
+  downloadCSV([headers,...rows],"attendance_"+todayStr()+".csv");
+}
+
+
+// ── Monthly Revenue Chart ─────────────────────────────────────────────────────
+function renderRevenueChart(){
+  // Aggregate payments by month
+  const monthly={};
+  students.forEach(s=>{
+    (feePayments[s.id]||[]).forEach(p=>{
+      if(!p.date) return;
+      const mon=p.date.slice(0,7); // YYYY-MM
+      monthly[mon]=(monthly[mon]||0)+Number(p.amount||0);
+    });
+  });
+  const sorted=Object.keys(monthly).sort();
+  if(sorted.length<1){ document.getElementById("revenueChartWrap").innerHTML='<div style="text-align:center;padding:24px;color:var(--dim);font-size:13px;">No payment data yet.</div>'; return; }
+  const labels=sorted.map(m=>{const[y,mo]=m.split("-");return new Date(y,mo-1).toLocaleDateString("en-IN",{month:"short",year:"2-digit"});});
+  const values=sorted.map(m=>monthly[m]);
+  const total=values.reduce((a,b)=>a+b,0);
+  const meta=document.getElementById("revenueChartMeta");
+  if(meta) meta.textContent="Total: "+CUR()+" "+total.toLocaleString("en-IN")+" across "+sorted.length+" month"+(sorted.length>1?"s":"");
+  // Draw simple bar chart with canvas
+  const canvas=document.getElementById("revenueChart");
+  if(!canvas) return;
+  const ctx=canvas.getContext("2d");
+  const W=canvas.parentElement.clientWidth-32;
+  canvas.width=W; canvas.height=160;
+  const max=Math.max(...values)||1;
+  const barW=Math.max(20,Math.floor((W-40)/values.length)-6);
+  const pad=20;
+  ctx.clearRect(0,0,W,160);
+  const isDark=document.documentElement.getAttribute("data-theme")==="dark";
+  const textCol=isDark?"#8892a4":"#6b7080";
+  const barCol=getInst("primaryColor")||"#2563eb";
+  const barCol2=getInst("accentColor")||"#d4a017";
+  values.forEach((v,i)=>{
+    const x=pad+i*(barW+6);
+    const h=Math.max(4,Math.round((v/max)*(160-40)));
+    const y=120-h;
+    // Gradient bar
+    const grad=ctx.createLinearGradient(0,y,0,120);
+    grad.addColorStop(0,barCol); grad.addColorStop(1,barCol+"55");
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(x,y,barW,h,4):ctx.rect(x,y,barW,h);
+    ctx.fill();
+    // Label
+    ctx.fillStyle=textCol;
+    ctx.font="10px 'Space Mono',monospace";
+    ctx.textAlign="center";
+    ctx.fillText(labels[i],x+barW/2,140);
+    // Value on top
+    if(barW>28){
+      ctx.fillStyle=barCol;
+      ctx.font="bold 9px 'Space Mono',monospace";
+      ctx.fillText(v>=1000?Math.round(v/1000)+"k":v,x+barW/2,y-4);
+    }
+  });
+}
+
+
+// ── Holiday / Closed Day Management ──────────────────────────────────────────
+// Stored as instSettings.holidays = ["2024-12-25","2025-01-01",...]
+function getHolidays(){ return getInst("holidays")||[]; }
+function isHoliday(date){ return getHolidays().includes(date); }
+
+function openHolidayManager(){
+  const holidays=getHolidays().sort().reverse();
+  const html=`
+    <div class="modal-title">🏖 Holidays & Closed Days</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Mark days when the institute is closed. Attendance will show a 🏖 banner on these days.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="date" id="newHolidayDate" class="form-input" style="flex:1;" value="${todayStr()}">
+      <input type="text" id="newHolidayName" class="form-input" placeholder="Reason (e.g. Diwali)" style="flex:2;">
+      <button class="btn btn-primary btn-sm" onclick="addHoliday()">Add</button>
+    </div>
+    <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;" id="holidayList">
+      ${holidays.length?holidays.map(h=>{
+        const hd=typeof h==="object"?h:{date:h,name:""};
+        return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);">
+          <span style="font-family:'Space Mono',monospace;font-size:12px;flex:1;">${hd.date}</span>
+          <span style="font-size:13px;flex:2;color:var(--muted);">${hd.name||"Closed"}</span>
+          <span style="font-size:12px;color:var(--muted);">${getDow(hd.date)}</span>
+          <button onclick="removeHoliday('${hd.date}')" style="background:none;border:none;color:var(--rc-red);cursor:pointer;font-size:15px;padding:0 4px;">✕</button>
+        </div>`;
+      }).join(""):`<div style="text-align:center;padding:20px;color:var(--dim);font-size:13px;">No holidays added yet.</div>`}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPay')">Close</button>
+    </div>`;
+  document.getElementById("payModalContent").innerHTML=html;
+  openModal("modalPay");
+}
+
+function addHoliday(){
+  const date=document.getElementById("newHolidayDate").value;
+  const name=document.getElementById("newHolidayName").value.trim()||"Closed";
+  if(!date){ showToast("Select a date","warn"); return; }
+  const holidays=getHolidays();
+  if(holidays.some(h=>(typeof h==="object"?h.date:h)===date)){ showToast("Already added","warn"); return; }
+  holidays.push({date,name});
+  instSettings.holidays=holidays;
+  saveInst(); scheduleSyncPush();
+  showToast("Holiday added: "+date,"success");
+  openHolidayManager(); // refresh
+}
+
+function removeHoliday(date){
+  instSettings.holidays=(getHolidays()).filter(h=>(typeof h==="object"?h.date:h)!==date);
+  saveInst(); scheduleSyncPush();
+  showToast("Removed","success");
+  openHolidayManager();
+}
+
+
+// ── Quick student session notes ───────────────────────────────────────────────
+function openSessionNote(sid, date){
+  const s=students.find(x=>x.id===sid);if(!s)return;
+  const key="note_"+sid+"_"+date;
+  const existing=lsGet(key,"");
+  const html=`
+    <div class="modal-title">📝 Note — ${s.name}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${date}</div>
+    <div class="form-group">
+      <label class="form-label">Session Note</label>
+      <textarea class="form-input" id="sessionNoteText" rows="4" placeholder="e.g. Completed F2L today, struggling with OLL. Practice parity cases next...">${existing}</textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPay')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSessionNote(${sid},'${date}')">💾 Save Note</button>
+    </div>`;
+  document.getElementById("payModalContent").innerHTML=html;
+  openModal("modalPay");
+  setTimeout(()=>document.getElementById("sessionNoteText")?.focus(),100);
+}
+
+function saveSessionNote(sid,date){
+  const text=document.getElementById("sessionNoteText")?.value.trim()||"";
+  const key="note_"+sid+"_"+date;
+  if(text) lsSave(key,text); else localStorage.removeItem(key);
+  closeModal("modalPay");
+  showToast("Note saved","success");
+  if(currentPage==="trainer-attendance") renderTrainerAttendance();
+}
+
+function getSessionNote(sid,date){ return lsGet("note_"+sid+"_"+date,""); }
+
+
+
+function renderPortalTrainerContact(sid){
+  if(!sid) sid=currentUser?.studentId;
+  const s=students.find(x=>x.id===sid);
+  const t=getTrainer(s?.trainerId);
+  const el=document.getElementById("portalTrainerContact");
+  if(!el||!t) return;
+  el.innerHTML=t.phone?`<a href="https://wa.me/91${t.phone.replace(/[^0-9]/g,"")}" target="_blank" class="btn-wa" style="text-decoration:none;">💬 Message Trainer</a>`:"";
+}
+
+// ── Portal: monthly attendance summary ───────────────────────────────────────
+function renderPortalMonthSummary(sid){
+  if(!sid) sid=currentUser?.studentId;
+  const el=document.getElementById("portalMonthSummary");
+  if(!el) return;
+  // Group attendance by month
+  const monthly={};
+  Object.entries(attendance).forEach(([date,rec])=>{
+    const st=rec[sid];if(!st)return;
+    const mon=date.slice(0,7);
+    if(!monthly[mon]) monthly[mon]={present:0,absent:0,late:0};
+    monthly[mon][st]=(monthly[mon][st]||0)+1;
+  });
+  const sorted=Object.keys(monthly).sort().reverse().slice(0,6);
+  if(!sorted.length){ el.innerHTML=""; return; }
+  el.innerHTML=`
+    <div style="font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--dim);margin-bottom:10px;letter-spacing:.5px;">Monthly Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:16px;">
+      ${sorted.map(m=>{
+        const d=monthly[m];
+        const total=d.present+d.absent+d.late;
+        const pct=total>0?Math.round((d.present+d.late)/total*100):0;
+        const color=pct>=80?"var(--rc-green)":pct>=60?"var(--rc-orange)":"var(--rc-red)";
+        const label=new Date(m+"-01").toLocaleDateString("en-IN",{month:"short",year:"2-digit"});
+        return`<div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border);">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px;">${label}</div>
+          <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:18px;color:${color};">${pct}%</div>
+          <div style="font-size:10px;color:var(--dim);">${d.present+d.late}/${total} classes</div>
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
+
+// ── Student achievement badges ────────────────────────────────────────────────
+function getStudentBadges(sid){
+  const badges=[];
+  const fs=getFeeStatus(sid);
+  const att=getAttendedDates(sid);
+  const streak=getAttStreak(sid);
+  const sp=studentProgress[sid]||{};
+  const completedLevels=Object.values(sp).flatMap(pt=>Object.values(pt).filter(l=>l.status==="completed")).length;
+
+  if(att.length>=1)  badges.push({icon:"🎯",label:"First Class",desc:"Attended first class"});
+  if(att.length>=10) badges.push({icon:"⭐",label:"10 Classes",desc:"Attended 10 classes"});
+  if(att.length>=25) badges.push({icon:"🌟",label:"25 Classes",desc:"Attended 25 classes"});
+  if(att.length>=50) badges.push({icon:"🏆",label:"50 Classes",desc:"Attended 50 classes"});
+  if(att.length>=100)badges.push({icon:"💎",label:"100 Classes",desc:"Attended 100 classes"});
+  if(streak.current>=5) badges.push({icon:"🔥",label:streak.current+" Streak",desc:streak.current+" consecutive classes"});
+  if(fs.paidCycles.size>=1)  badges.push({icon:"💳",label:"First Payment",desc:"Made first fee payment"});
+  if(fs.paidCycles.size>=6)  badges.push({icon:"💰",label:"Consistent Payer",desc:"6+ cycles paid on time"});
+  if(completedLevels>=1) badges.push({icon:"🧩",label:"Level Up!",desc:"Completed first skill level"});
+  if(completedLevels>=5) badges.push({icon:"🎮",label:"Skilled",desc:"5 levels completed"});
+  if(completedLevels>=10)badges.push({icon:"🏅",label:"Expert",desc:"10 levels completed"});
+  return badges;
+}
+
+function renderPortalBadges(sid){
+  if(!sid) sid=currentUser?.studentId;
+  const el=document.getElementById("portalBadges");if(!el)return;
+  const badges=getStudentBadges(sid);
+  if(!badges.length){ el.innerHTML=""; return; }
+  el.innerHTML=`
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><span class="card-title">🏅 Achievements</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px;">
+        ${badges.map(b=>`<div title="${b.desc}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);min-width:70px;cursor:help;">
+          <span style="font-size:24px;">${b.icon}</span>
+          <span style="font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);text-align:center;">${b.label}</span>
+        </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+
+// ── Handle PWA shortcuts (home screen quick actions) ─────────────────────────
+function handlePWAShortcuts(){
+  const params = new URLSearchParams(window.location.search);
+  const shortcut = params.get("shortcut");
+  if(!shortcut || !currentUser) return;
+  const map = {
+    "attendance": currentUser.role==="admin" ? "admin-attendance" : "trainer-attendance",
+    "fees":       "admin-fees",
+    "students":   currentUser.role==="admin" ? "admin-students"   : "trainer-students",
+    "progress":   "admin-progress"
+  };
+  if(map[shortcut]) showPage(map[shortcut]);
+}
+
+// ── Listen for background sync signal from SW ─────────────────────────────────
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", e => {
+    if(e.data?.type === "SYNC_NOW" && getSyncUrl()){
+      pushToSheet(true);
+    }
+  });
+}
+
 // ══ ADMIN DASHBOARD ════════════════════════════════════════════════════════════
 function renderAdminDashboard(){
   const today=todayStr(),dow=getDow(today);
@@ -1988,6 +2386,10 @@ function adminSetAtt(studentId,status,date){
   showToast(status?"Marked "+status:"Attendance cleared","success");
 }
 function renderAdminAttendance(){
+  // Show holiday banner if this date is a holiday
+  const holidayBanner=document.getElementById("attHolidayBanner");
+  const hd=getHolidays().find(h=>(typeof h==="object"?h.date:h)===adminAttDate);
+  if(holidayBanner){ holidayBanner.style.display=hd?"flex":"none"; if(hd) holidayBanner.querySelector("span").textContent="🏖 "+((typeof hd==="object"?hd.name:"")||"Institute Closed")+" — No classes today"; }
   document.getElementById("adminAttDateDisplay").textContent=fmtDate(adminAttDate);
   document.getElementById("adminAttCardTitle").textContent=`Attendance — ${fmtDate(adminAttDate)}`;
   const trainerFilter=document.getElementById("adminAttTrainerFilter")?.value;
@@ -2086,6 +2488,7 @@ function renderSchedule(gridId){
 
 // ══ REPORTS ═════════════════════════════════════════════════════════════════════
 function renderReports(){
+  renderRevenueChart();
   document.getElementById("trainerReportBody").innerHTML=trainers.map(t=>{
     const tStu=students.filter(s=>s.trainerId===t.id);
     let tPresent=0,tTotal=0;
@@ -2130,10 +2533,15 @@ function renderTrainerDashboard(){
   const todayAtt=attendance[today]||{};
   const present=todayStu.filter(s=>todayAtt[s.id]==="present").length;
   const dueCount=myStu.filter(s=>getFeeStatus(s.id).pendingCycles>0).length;
+  // Trainer performance stats
+  const totalClasses=Object.values(attendance).reduce((sum,rec)=>sum+myStu.filter(s=>rec[s.id]).length,0);
+  const totalPresent=myStu.reduce((sum,s)=>sum+getAttendedDates(s.id).length,0);
+  const overallPct=totalClasses>0?Math.round(totalPresent/totalClasses*100):0;
   document.getElementById("trainerStats").innerHTML=`
     <div class="stat-card" style="--c:var(--rc-blue)"><div class="stat-label">My Students</div><div class="stat-value">${myStu.length}</div></div>
     <div class="stat-card" style="--c:var(--rc-blue)"><div class="stat-label">Today's Classes</div><div class="stat-value">${todayStu.length}</div><div class="stat-sub">${DAY_FULL[dow]}</div></div>
     <div class="stat-card" style="--c:var(--rc-green)"><div class="stat-label">Present Today</div><div class="stat-value">${present}</div></div>
+    <div class="stat-card" style="--c:var(--rc-orange)"><div class="stat-label">Avg Attendance</div><div class="stat-value">${overallPct}%</div><div class="stat-sub">all time</div></div>
     <div class="stat-card" style="--c:var(--rc-red)"><div class="stat-label">Fee Due</div><div class="stat-value">${dueCount}</div><div class="stat-sub">student${dueCount!==1?"s":""}</div></div>
   `;
   // Today's students with quick mark
@@ -2161,6 +2569,9 @@ function renderTrainerDashboard(){
 // ══ TRAINER ATTENDANCE ════════════════════════════════════════════════════════
 function changeTrainerAttDate(n){trainerAttDate=offsetDate(trainerAttDate,n);renderTrainerAttendance();}
 function renderTrainerAttendance(){
+  const holidayBannerT=document.getElementById("attHolidayBannerT");
+  const hdT=getHolidays().find(h=>(typeof h==="object"?h.date:h)===trainerAttDate);
+  if(holidayBannerT){ holidayBannerT.style.display=hdT?"flex":"none"; if(hdT) holidayBannerT.querySelector("span").textContent="🏖 "+((typeof hdT==="object"?hdT.name:"")||"Institute Closed"); }
   document.getElementById("trainerAttDateDisplay").textContent=fmtDate(trainerAttDate);
   const dow=getDow(trainerAttDate);
   document.getElementById("trainerAttCardTitle").textContent=`My Students — ${DAY_FULL[dow]}`;
@@ -2184,8 +2595,11 @@ function renderTrainerAttendance(){
       </td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--dim);margin-top:2px;">Total: ${fs.totalAttended}</div></td>
       <td>${feeIndHTML(fs)}</td>
+      <td><button onclick="openSessionNote(${s.id},'${trainerAttDate}')" title="Add session note"
+        style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 7px;cursor:pointer;font-size:13px;color:${getSessionNote(s.id,trainerAttDate)?'var(--rc-blue)':'var(--dim)'};"
+        >📝${getSessionNote(s.id,trainerAttDate)?"✓":""}</button></td>
     </tr>`;
-  }).join(""):emptyRow(6,`No students on ${DAY_FULL[dow]}`);
+  }).join(""):emptyRow(7,`No students on ${DAY_FULL[dow]}`);
 }
 function trainerSetAtt(studentId,status,date){
   // Only trainer's own students
@@ -3460,6 +3874,7 @@ function toggleDarkMode(){
   document.documentElement.setAttribute("data-theme",next);
   lsSave("ct_theme",next);
   updateDarkModeBtn();
+  syncThemeColor();
 }
 function updateDarkModeBtn(){
   const isDark=document.documentElement.getAttribute("data-theme")==="dark"||
@@ -3484,6 +3899,104 @@ async function retryDataLoad(){
     btn.disabled=false;
   }
   showToast(ok?"Data loaded ✓":"Still couldn't load — check internet & try again",ok?"success":"error");
+}
+
+
+// ══ PWA ENGINE ═══════════════════════════════════════════════════════════════
+
+// ── Service Worker registration ───────────────────────────────────────────────
+let _swReg = null;
+async function registerServiceWorker(){
+  if(!("serviceWorker" in navigator)) return;
+  try{
+    _swReg = await navigator.serviceWorker.register("sw.js",{scope:"./"});
+    console.log("CubeTrack SW registered:",_swReg.scope);
+    // Listen for SW updates — notify user to refresh
+    _swReg.addEventListener("updatefound",()=>{
+      const nw=_swReg.installing;
+      nw.addEventListener("statechange",()=>{
+        if(nw.state==="installed"&&navigator.serviceWorker.controller){
+          showToast("App updated — refresh to get latest version","success");
+        }
+      });
+    });
+  } catch(e){ console.warn("SW registration failed:",e); }
+}
+
+// ── Install prompt ────────────────────────────────────────────────────────────
+let _deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  // Show banner only if not dismissed recently
+  const dismissed = lsGet("pwa_dismissed_ts",0);
+  const dayMs = 86400000;
+  if(Date.now()-dismissed > 3*dayMs){ // show again after 3 days
+    setTimeout(()=>{
+      const banner=document.getElementById("pwaInstallBanner");
+      if(banner) banner.classList.add("show");
+    }, 4000); // wait 4s after load so user gets oriented first
+  }
+});
+window.addEventListener("appinstalled",()=>{
+  _deferredInstallPrompt=null;
+  const banner=document.getElementById("pwaInstallBanner");
+  if(banner) banner.classList.remove("show");
+  showToast("CubeTrack installed! Find it on your home screen 🎉","success");
+  lsSave("pwa_installed",true);
+});
+async function pwaInstall(){
+  if(!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  const result = await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+  document.getElementById("pwaInstallBanner")?.classList.remove("show");
+  if(result.outcome==="accepted") showToast("Installing CubeTrack…","success");
+}
+function pwaDismiss(){
+  document.getElementById("pwaInstallBanner")?.classList.remove("show");
+  lsSave("pwa_dismissed_ts", Date.now());
+}
+
+// ── Offline / online detection ────────────────────────────────────────────────
+function updateOnlineStatus(){
+  const banner=document.getElementById("offlineBanner");
+  if(!banner) return;
+  if(navigator.onLine){
+    banner.classList.remove("show");
+    // Back online — pull fresh data silently
+    if(getSyncUrl()) pullFromSheet(true).then(updated=>{
+      if(updated) showToast("Back online — data refreshed ✓","success");
+    });
+  } else {
+    banner.classList.add("show");
+  }
+}
+window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("offline", updateOnlineStatus);
+
+// ── Session persistence ───────────────────────────────────────────────────────
+// Save currentUser to localStorage so session survives page refresh
+const SESSION_KEY = "ct6_session";
+function saveSession(){
+  if(currentUser) lsSave(SESSION_KEY, currentUser);
+  else try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+function loadSession(){
+  return lsGet(SESSION_KEY, null);
+}
+function clearSession(){
+  try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+
+// ── Theme color sync ──────────────────────────────────────────────────────────
+// Keep the browser chrome theme-color in sync with dark/light mode
+function syncThemeColor(){
+  const isDark = document.documentElement.getAttribute("data-theme")==="dark" ||
+    (document.documentElement.getAttribute("data-theme")!=="light" &&
+     window.matchMedia("(prefers-color-scheme:dark)").matches);
+  const meta = document.getElementById("themeColorMeta");
+  if(meta) meta.content = isDark ? "#1a1d2e" : "#e63946";
 }
 
 // ── Auto-refresh every 60s for multi-device sync ─────────────────────────────
@@ -3528,6 +4041,9 @@ function hideLoadingSplash(){
 
 async function init(){
   initDarkMode();
+  syncThemeColor();
+  registerServiceWorker();
+  updateOnlineStatus();
 
   // Always hardcode DEPLOY_URL — new devices, incognito, shared links all start with empty localStorage
   const DEPLOY_URL="https://script.google.com/macros/s/AKfycbwl_tgQCqIPWDkCU_XWqecMpLfU5mgCpQ2EuQv_oaodPprgMZ2gyjCN8Sos9JxxaA4IMQ/exec";
@@ -3576,8 +4092,36 @@ async function init(){
   const retryBtn=document.getElementById("retryDataBtn");
   if(retryBtn) retryBtn.style.display=(!trainers.length&&!students.length&&!getInst("setupDone"))?"inline-block":"none";
 
+  // Restore session — check savedSession AFTER pull so data is ready
+  const savedSession = loadSession();
+  if(savedSession && !currentUser){
+    // Validate session is still valid against current data
+    let sessionValid = false;
+    if(savedSession.role==="admin"){
+      sessionValid = true; // admin is always valid if creds are in localStorage
+      currentUser = savedSession;
+    } else if(savedSession.role==="trainer"){
+      const t = trainers.find(x=>x.id===savedSession.trainerId);
+      if(t){ currentUser=savedSession; sessionValid=true; }
+    } else if(savedSession.role==="parent"){
+      const s = students.find(x=>x.id===savedSession.studentId);
+      if(s){ currentUser=savedSession; sessionValid=true; }
+    }
+    if(!sessionValid){ clearSession(); currentUser=null; }
+  }
+
   setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
-  if(currentUser) showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
+
+  if(currentUser){
+    // Session restored — go straight to app, skip login screen
+    document.getElementById("loginScreen").style.display="none";
+    if(currentUser.role==="parent"){
+      launchParentPortal(currentUser.studentId);
+    } else {
+      launchApp();
+      showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
+    }
+  }
 }
 init();
 </script>
