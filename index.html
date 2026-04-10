@@ -418,6 +418,9 @@ select.form-input option{background:var(--surface);}
     </div>
     <div class="login-err" id="loginErr"></div>
     <div class="login-hint" id="loginHint"></div>
+  <div style="text-align:center;margin-top:14px;">
+    <button onclick="retryDataLoad()" id="retryDataBtn" style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;padding:6px 14px;">↻ Retry loading data</button>
+  </div>
   </div>
 </div>
 
@@ -1183,6 +1186,8 @@ async function pullFromSheet(silent){
         lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
         setSyncTs(sheetTs); setSyncState("ok","Pulled "+fmtNow());
         if(!silent) showToast("Pulled latest data from Sheet ✓","success");
+        // Rebuild login fields if still on login screen (trainer names / student rolls may have changed)
+        if(!currentUser) buildLoginFields();
         return true;
       } else { setSyncState("ok","Up to date"); if(!silent) showToast("Already up to date","success"); return false; }
     } else { setSyncState("err","Pull failed"); if(!silent) showToast("Sheet error: "+(j.error||"unknown"),"error"); return false; }
@@ -1190,13 +1195,12 @@ async function pullFromSheet(silent){
 }
 
 function setSyncState(state,label){
+  const colors={ok:"#6ee7b7",err:"#f87171",syncing:"#f59e0b",off:"#4a5068"};
   const dot=document.getElementById("syncDot"), lbl=document.getElementById("syncLabel"), wrap=document.getElementById("syncStatus");
   if(!dot) return;
   wrap.style.display="flex"; lbl.textContent=label;
-  // Also show sync state in a small mobile-friendly indicator
   const mob=document.getElementById("mobileSyncDot");
   if(mob){ mob.style.display=window.innerWidth<=768?"block":"none"; mob.style.background=colors[state]||colors.off; mob.title=label; }
-  const colors={ok:"#6ee7b7",err:"#f87171",syncing:"#f59e0b",off:"#4a5068"};
   dot.style.background=colors[state]||colors.off;
   dot.style.boxShadow=state==="ok"?"0 0 6px #6ee7b7":state==="err"?"0 0 6px #f87171":"none";
   dot.style.animation=state==="syncing"?"pulse 1s infinite":"";
@@ -1616,11 +1620,21 @@ function doLogin(){
     const phone=pass.replace(/[^0-9]/g,"");
     const s=students.find(x=>x.roll===user&&x.parentPhone&&x.parentPhone.replace(/[^0-9]/g,"")===phone);
     if(s){currentUser={role:"parent",studentId:s.id};launchParentPortal(s.id);}
-    else{err.textContent="Roll number or phone not found. Contact admin.";err.style.display="block";}
+    else{
+      if(!students.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
+      else if(!students.some(x=>x.roll===user)){ err.textContent="Roll number "+user+" not found. Check with your admin."; }
+      else{ err.textContent="Phone number doesn't match. Use the number registered with admin."; }
+      err.style.display="block";
+    }
   } else {
     const t=trainers.find(x=>x.username===user&&x.password===pass);
     if(t){currentUser={role:"trainer",trainerId:t.id};launchApp();}
-    else{err.textContent="Invalid username or password";err.style.display="block";}
+    else{
+      if(!trainers.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
+      else if(!trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
+      else{ err.textContent="Wrong password. Try again or contact admin."; }
+      err.style.display="block";
+    }
   }
 }
 function doLogout(){
@@ -1630,7 +1644,10 @@ function doLogout(){
   document.getElementById("appShell").style.display="none";
   const pp=document.getElementById("parentPortal");
   if(pp) pp.style.display="none";
+  initLoginTabs();
   buildLoginFields();
+  // Pull fresh in background so next login has up-to-date trainer names & student rolls
+  pullFromSheet(true).then(()=>{ applyInstSettings(); buildLoginFields(); });
 }
 
 // ══ LAUNCH APP ═════════════════════════════════════════════════════════════════
@@ -3428,6 +3445,47 @@ function renderPortalSchedule(sid){
 
 // ══ INIT ═══════════════════════════════════════════════════════════════════════
 
+
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+function initDarkMode(){
+  const saved=lsGet("ct_theme","auto");
+  if(saved==="dark") document.documentElement.setAttribute("data-theme","dark");
+  else if(saved==="light") document.documentElement.setAttribute("data-theme","light");
+  updateDarkModeBtn();
+}
+function toggleDarkMode(){
+  const isDark=document.documentElement.getAttribute("data-theme")==="dark"||
+    (document.documentElement.getAttribute("data-theme")!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);
+  const next=isDark?"light":"dark";
+  document.documentElement.setAttribute("data-theme",next);
+  lsSave("ct_theme",next);
+  updateDarkModeBtn();
+}
+function updateDarkModeBtn(){
+  const isDark=document.documentElement.getAttribute("data-theme")==="dark"||
+    (document.documentElement.getAttribute("data-theme")!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);
+  const btn=document.getElementById("darkModeBtn");
+  if(btn) btn.textContent=isDark?"☀️":"🌙";
+}
+
+// ── Retry data load (for shared-link users when first pull fails) ─────────────
+async function retryDataLoad(){
+  const btn=document.getElementById("retryDataBtn");
+  if(btn){ btn.textContent="↻ Loading…"; btn.disabled=true; }
+  showLoadingSplash();
+  let ok=false;
+  try{ ok=!!(await pullFromSheet(true)); } catch(e){}
+  hideLoadingSplash();
+  applyInstSettings();
+  buildLoginFields();
+  if(btn){
+    btn.style.display=(!trainers.length&&!students.length)?"inline-block":"none";
+    btn.textContent="↻ Retry loading data";
+    btn.disabled=false;
+  }
+  showToast(ok?"Data loaded ✓":"Still couldn't load — check internet & try again",ok?"success":"error");
+}
+
 // ── Auto-refresh every 60s for multi-device sync ─────────────────────────────
 let _autoRefreshTimer = null;
 function startAutoRefresh(){
@@ -3469,44 +3527,57 @@ function hideLoadingSplash(){
 }
 
 async function init(){
-  // Always write DEPLOY_URL — incognito clears localStorage every session,
-  // so we must never skip this, otherwise the app starts blank every time.
+  initDarkMode();
+
+  // Always hardcode DEPLOY_URL — new devices, incognito, shared links all start with empty localStorage
   const DEPLOY_URL="https://script.google.com/macros/s/AKfycbwl_tgQCqIPWDkCU_XWqecMpLfU5mgCpQ2EuQv_oaodPprgMZ2gyjCN8Sos9JxxaA4IMQ/exec";
   setSyncUrl(DEPLOY_URL);
 
+  // Load cached data (empty on first visit to any device — that is expected)
   loadInst();
   loadProgress();
-
-  // Load whatever is in localStorage (empty in incognito — that's OK)
   const saved=lsGet("ct6_trainers",null);
   if(saved){
     trainers=saved; students=lsGet("ct6_students",[]);
     attendance=lsGet("ct6_att",{}); feePayments=lsGet("ct6_fees",{});
     normalizeFeePayments();
   } else {
-    // Don't seedData() yet — wait to see what the sheet returns
     trainers=[]; students=[]; attendance={}; feePayments={};
   }
 
-  applyInstSettings();
-  initLoginTabs();
-  buildLoginFields();
-
-  // Always pull fresh from Google Sheet — works in incognito too
+  // Show branded loading splash FIRST — prevents "new institute" flash
   showLoadingSplash();
+
+  // Pull from sheet with retry (Apps Script cold-starts can be slow)
   let pullOk=false;
-  try { pullOk=!!(await pullFromSheet(true)); } catch(e){ /* offline */ }
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      pullOk=!!(await pullFromSheet(true));
+      if(pullOk) break;
+    } catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:",e.message); }
+    if(attempt===0) await new Promise(r=>setTimeout(r,2500)); // wait before retry
+  }
+
   hideLoadingSplash();
 
-  // Only show setup wizard if the sheet truly has no data (real fresh install)
-  const hasData=trainers.length>0||students.length>0;
-  if(!hasData && !getInst("setupDone")){
+  // Apply branding from sheet data (now loaded) — AFTER pull, not before
+  applyInstSettings();
+  initLoginTabs();
+  buildLoginFields(); // CRITICAL: build AFTER pull so trainer names and student rolls are ready
+
+  // Show setup wizard only on genuine first install (no data anywhere)
+  const hasRealData = trainers.length>0 || students.length>0 || getInst("setupDone");
+  if(!hasRealData){
     saveAll();
     setTimeout(()=>openSetupWizard(), 400);
   }
 
-  setTimeout(()=>{ if(getSyncUrl()) setSyncState("ok","Saved"); }, 100);
-  if(pullOk&&currentUser) showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
+  // Show retry button if still no data after pull attempts
+  const retryBtn=document.getElementById("retryDataBtn");
+  if(retryBtn) retryBtn.style.display=(!trainers.length&&!students.length&&!getInst("setupDone"))?"inline-block":"none";
+
+  setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
+  if(currentUser) showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
 }
 init();
 </script>
