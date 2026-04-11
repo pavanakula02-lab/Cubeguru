@@ -1747,6 +1747,9 @@ function doLogout(){
 function launchApp(){
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appShell").style.display="block";
+  // Reset date navigation to today on each login to avoid stale old dates
+  adminAttDate=todayStr();
+  trainerAttDate=todayStr();
   buildHeader();
   buildSidebar();
   buildMobileNav();
@@ -1905,16 +1908,29 @@ function buildMobileNav(){
 
 // ══ NAVIGATION ═════════════════════════════════════════════════════════════════
 function showPage(name){
+  // Role guard — trainer cannot access admin pages, parent cannot access either
+  const adminPages=["admin-dashboard","admin-trainers","admin-students","admin-attendance",
+    "admin-fees","admin-schedule","admin-reports","admin-progress"];
+  const trainerPages=["trainer-dashboard","trainer-attendance","trainer-students","trainer-schedule"];
+  const role=currentUser?.role;
+  if(role==="trainer" && adminPages.includes(name)){
+    console.warn("CubeTrack: access denied —",name,"is admin-only");
+    name="trainer-dashboard"; // redirect to their own dashboard
+  }
+  if(role==="parent"){
+    console.warn("CubeTrack: access denied — parents use the portal");
+    return;
+  }
+
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active","trainer-active"));
   const pageEl=document.getElementById("page-"+name);
   if(pageEl)pageEl.classList.add("active");
   const navEl=document.getElementById("nav-"+name);
-  if(navEl)navEl.classList.add(currentUser.role==="trainer"?"trainer-active":"active");
-  // Sync mobile nav highlight
+  if(navEl)navEl.classList.add(role==="trainer"?"trainer-active":"active");
   document.querySelectorAll(".mnav-item").forEach(n=>n.classList.remove("active","trainer-active"));
   const mnavEl=document.getElementById("mnav-"+name);
-  if(mnavEl)mnavEl.classList.add(currentUser.role==="trainer"?"trainer-active":"active");
+  if(mnavEl)mnavEl.classList.add(role==="trainer"?"trainer-active":"active");
   currentPage=name;
   const renders={
     "admin-dashboard":renderAdminDashboard,
@@ -1934,10 +1950,21 @@ function showPage(name){
   updateFeesDot();
 }
 function updateFeesDot(){
+  const hasDue=students.some(s=>getFeeStatus(s.id).pendingCycles>0);
+  // Sidebar dot
   const el=document.getElementById("feesDot");
-  if(el)el.style.display=students.some(s=>getFeeStatus(s.id).pendingCycles>0)?"inline-block":"none";
-  // Refresh mobile nav to update fee dot
-  if(currentUser) buildMobileNav();
+  if(el)el.style.display=hasDue?"inline-block":"none";
+  // Mobile nav dot — only update the dot, not rebuild the entire nav
+  const mDot=document.querySelector("#mnav-admin-fees .mnav-dot");
+  if(mDot) mDot.style.display=hasDue?"block":"none";
+  else if(hasDue){
+    const mFees=document.getElementById("mnav-admin-fees");
+    if(mFees&&!mFees.querySelector(".mnav-dot")){
+      const d=document.createElement("span");
+      d.className="mnav-dot";
+      mFees.appendChild(d);
+    }
+  }
 }
 
 
@@ -2266,8 +2293,10 @@ function renderAdminDashboard(){
   const todayStu=students.filter(s=>s.days.includes(dow));
   const todayAtt=attendance[today]||{};
   const present=todayStu.filter(s=>todayAtt[s.id]==="present").length;
-  const dueStudents=students.filter(s=>getFeeStatus(s.id).pendingCycles>0);
-  const totalDue=dueStudents.reduce((sum,s)=>sum+getFeeStatus(s.id).pendingCycles*s.fee,0);
+  // Compute fee status once per student — not twice
+  const feeStatusMap=new Map(students.map(s=>[s.id,getFeeStatus(s.id)]));
+  const dueStudents=students.filter(s=>feeStatusMap.get(s.id).pendingCycles>0);
+  const totalDue=dueStudents.reduce((sum,s)=>sum+feeStatusMap.get(s.id).pendingCycles*s.fee,0);
   const totalCollected=Object.values(feePayments).flat().reduce((s,p)=>s+p.amount,0);
   document.getElementById("adminStats").innerHTML=`
     <div class="stat-card" style="--c:var(--rc-blue)"><div class="stat-label">${Ts()}</div><div class="stat-value">${trainers.length}</div></div>
@@ -2303,7 +2332,7 @@ function renderAdminDashboard(){
   }).join("")||emptyRow(4,"No trainers yet");
   // Fee alerts
   document.getElementById("adminFeeAlertBody").innerHTML=dueStudents.slice(0,8).map(s=>{
-    const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
+    const fs=feeStatusMap.get(s.id),t=getTrainer(s.trainerId);
     return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono c-red">${CUR()} ${(fs.pendingCycles*s.fee).toLocaleString("en-IN")}</td><td style="display:flex;gap:6px;align-items:center;"><button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">Collect</button>${s.phone?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'fee')">WA</button>`:""}</td></tr>`;
   }).join("")||`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--rc-green);">✓ No pending fees</td></tr>`;
 }
@@ -2842,6 +2871,7 @@ function refreshFeeViews(){
 
 // ══ FEE HISTORY MODAL ══════════════════════════════════════════════════════════
 function openFeeHistory(sid){
+  if(currentUser?.role!=="admin"){showToast("Fee history is admin only","error");return;}
   payStudentId=sid;
   renderFeeHistory();
   openModal("modalPay");
@@ -2970,7 +3000,10 @@ function editPaymentField(pid,field,value,sid){ editPaymentByKey(sid+"_0",field,
 function deletePayment(pid,sid){ deletePaymentByKey(sid+"_0"); }
 
 // ══ PAY MODAL ══════════════════════════════════════════════════════════════════
-function openPayModal(sid){payStudentId=sid;renderPayModal();openModal("modalPay");}
+function openPayModal(sid){
+  if(currentUser?.role!=="admin"){showToast("Fee collection is admin only","error");return;}
+  payStudentId=sid;renderPayModal();openModal("modalPay");
+}
 function renderPayModal(){
   const s=students.find(x=>x.id===payStudentId);if(!s)return;
   const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
@@ -3339,10 +3372,11 @@ function deleteLevel(puzzleId, levelId){
 
 // ── Progress modal ────────────────────────────────────────────────────────────
 function openProgressModal(preSelectStudentId){
-  // Populate student dropdown
+  // Populate student dropdown — trainer only sees their own students
+  const progStudents = currentUser?.role==="trainer" ? myStudents() : students;
   const ssel = document.getElementById("prog_student");
   ssel.innerHTML = `<option value="">Select student</option>` +
-    students.map(s=>`<option value="${s.id}" ${preSelectStudentId===s.id?"selected":""}>${s.name} (${s.roll})</option>`).join("");
+    progStudents.map(s=>`<option value="${s.id}" ${preSelectStudentId===s.id?"selected":""}>${s.name} (${s.roll})</option>`).join("");
 
   // Populate puzzle dropdown
   const psel = document.getElementById("prog_puzzle");
@@ -3461,7 +3495,9 @@ function renderAdminProgress(){
 function renderProgressStudentList(){
   const search = (document.getElementById("progressSearch")?.value||"").toLowerCase();
   const tf = document.getElementById("progressTrainerFilter")?.value;
-  let list = students.filter(s=>{
+  // Trainer can only see their own students on progress page
+  const baseList = currentUser?.role==="trainer" ? myStudents() : students;
+  let list = baseList.filter(s=>{
     if(tf && s.trainerId!=tf) return false;
     if(search && !s.name.toLowerCase().includes(search) && !s.roll.includes(search)) return false;
     return true;
