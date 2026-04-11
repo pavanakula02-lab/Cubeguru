@@ -3908,19 +3908,38 @@ async function retryDataLoad(){
 let _swReg = null;
 async function registerServiceWorker(){
   if(!("serviceWorker" in navigator)) return;
+
+  // Only register on real hosting — skip inside Claude preview, iframes, or
+  // any environment where sw.js isn't served alongside index.html.
+  const host = window.location.hostname;
+  const isRealHost = host.endsWith("github.io") || host.endsWith("netlify.app") ||
+    host.endsWith("vercel.app") || host.endsWith("pages.dev");
+  const isIframe = window.self !== window.top;
+
+  if(!isRealHost || isIframe){
+    console.log("CubeTrack SW: skipped (not on production host)");
+    return;
+  }
+
   try{
+    // Probe that sw.js actually exists before registering — avoids 404 warnings
+    const probe = await fetch("sw.js",{method:"HEAD"});
+    if(!probe.ok){ console.log("CubeTrack SW: sw.js not found, skipping"); return; }
+
     _swReg = await navigator.serviceWorker.register("sw.js",{scope:"./"});
     console.log("CubeTrack SW registered:",_swReg.scope);
-    // Listen for SW updates — notify user to refresh
+
     _swReg.addEventListener("updatefound",()=>{
       const nw=_swReg.installing;
       nw.addEventListener("statechange",()=>{
         if(nw.state==="installed"&&navigator.serviceWorker.controller){
-          showToast("App updated — refresh to get latest version","success");
+          showToast("App updated — refresh to get latest version ↻","success");
         }
       });
     });
-  } catch(e){ console.warn("SW registration failed:",e); }
+  } catch(e){
+    console.log("CubeTrack SW: skipped —",e.message);
+  }
 }
 
 // ── Install prompt ────────────────────────────────────────────────────────────
