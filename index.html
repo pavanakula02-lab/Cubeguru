@@ -2472,15 +2472,22 @@ function renderAdminFees(){
 // ══ SCHEDULE ════════════════════════════════════════════════════════════════════
 function renderSchedule(gridId){
   const todayDow=getDow(todayStr());
+  // For trainer schedule: show only their own students.
+  // For admin schedule: show all students.
+  const isTrainerGrid = gridId==="trainerScheduleGrid";
+  const visibleStudents = isTrainerGrid
+    ? students.filter(s=>s.trainerId===currentUser?.trainerId)
+    : students;
+
   document.getElementById(gridId).innerHTML=DAYS.map(day=>{
     const isToday=day===todayDow;
-    const list=students.filter(s=>s.days.includes(day)).sort((a,b)=>a.start.localeCompare(b.start));
+    const list=visibleStudents.filter(s=>s.days.includes(day)).sort((a,b)=>a.start.localeCompare(b.start));
     const slots=list.length?list.map(s=>{
       const t=getTrainer(s.trainerId);
       return`<div class="sched-slot" style="border-left:3px solid ${s.color}">
         <div class="sched-slot-name" style="color:${s.color}">${s.name.split(" ")[0]}</div>
         <div class="sched-slot-time">${fmt12(s.start)} – ${fmt12(s.end)}</div>
-        ${t?`<div class="sched-slot-trainer" style="color:${t.color};">@${t.name.split(" ")[0]}</div>`:""}
+        ${(!isTrainerGrid&&t)?`<div class="sched-slot-trainer" style="color:${t.color};">@${t.name.split(" ")[0]}</div>`:""}
       </div>`;}).join(""):`<div class="sched-empty">No class</div>`;
     return`<div class="sched-col ${isToday?"today-col":""}"><div class="sched-head ${isToday?"today-head":""}">${day}${isToday?" ★":""}</div>${slots}</div>`;
   }).join("");
