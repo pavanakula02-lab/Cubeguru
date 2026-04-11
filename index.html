@@ -586,8 +586,8 @@ select.form-input option{background:var(--surface);}
       <span id="syncDot" style="width:7px;height:7px;border-radius:50%;background:#4a5068;display:inline-block;flex-shrink:0;"></span>
       <span id="syncLabel">Not connected</span>
     </div>
-    <button class="logout-btn" onclick="openInstSettings(false)" style="color:#7c3aed;border-color:rgba(124,58,237,0.25);">🏫 Settings</button>
-    <button class="logout-btn" onclick="openSyncSettings()" style="color:var(--rc-blue);border-color:rgba(37,99,235,0.25);">⚙ Sync</button>
+    <button class="logout-btn" id="headerSettingsBtn" onclick="openInstSettings(false)" style="color:#7c3aed;border-color:rgba(124,58,237,0.25);">🏫 Settings</button>
+    <button class="logout-btn" id="headerSyncBtn" onclick="openSyncSettings()" style="color:var(--rc-blue);border-color:rgba(37,99,235,0.25);">⚙ Sync</button>
     <button class="logout-btn" onclick="openChangePassword()" style="color:var(--accent);border-color:var(--accent-border);">🔑 Change Password</button>
     <button class="logout-btn" onclick="doLogout()">Sign out</button>
   </div>
@@ -868,6 +868,44 @@ select.form-input option{background:var(--surface);}
       <div class="page-header"><div><div class="page-title">All Schedules</div><div class="page-sub">Weekly timetable (view only)</div></div></div>
       <div class="schedule-grid" id="trainerScheduleGrid"></div>
     </div>
+    <!-- Trainer Progress (own students only) -->
+    <div id="page-trainer-progress" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Student Progress</div><div class="page-sub">Update progress for your assigned students</div></div>
+        <button class="btn btn-primary btn-sm" onclick="openProgressModal()">＋ Update Progress</button>
+      </div>
+
+      <!-- Student selector -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header" style="flex-wrap:wrap;gap:10px;">
+          <span class="card-title">My Students</span>
+          <input class="search-input" id="trainerProgressSearch" placeholder="Search student..." oninput="renderTrainerProgress()" style="width:180px;">
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px;" id="trainerProgressGrid"></div>
+      </div>
+
+      <!-- Student detail panel -->
+      <div id="trainerProgressDetail" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div id="trainerProgressAvatar" style="width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;"></div>
+              <div>
+                <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:16px;" id="trainerProgressName"></div>
+                <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;" id="trainerProgressMeta"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="closeTrainerProgressDetail()">✕ Close</button>
+              <button class="btn btn-primary btn-sm" id="trainerProgressUpdateBtn" onclick="">＋ Update Progress</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:14px;border-bottom:1px solid var(--border);" id="trainerProgressStats"></div>
+          <div style="padding:14px;" id="trainerProgressCards"></div>
+        </div>
+      </div>
+    </div>
+
 
   </div><!-- /main -->
 </div><!-- /layout -->
@@ -1815,6 +1853,11 @@ function buildHeader(){
   document.getElementById("headerAvatar").style.cssText=`background:${color}22;color:${color};font-family:'Syne',sans-serif;font-weight:800;font-size:13px;`;
   document.getElementById("headerAvatar").textContent=initials(name);
   document.getElementById("headerRoleBadge").innerHTML=`<span class="role-badge ${currentUser.role}">${isAdmin?"Admin":"Trainer"}</span>`;
+  // Hide admin-only header buttons from trainers
+  const settingsBtn=document.getElementById("headerSettingsBtn");
+  const syncBtn=document.getElementById("headerSyncBtn");
+  if(settingsBtn) settingsBtn.style.display=isAdmin?"":"none";
+  if(syncBtn)     syncBtn.style.display=isAdmin?"":"none";
 }
 function buildSidebar(){
   const isAdmin=currentUser.role==="admin";
@@ -1842,9 +1885,10 @@ function buildSidebar(){
       <div class="nav-item" id="nav-trainer-attendance" onclick="showPage('trainer-attendance')"><span class="nav-icon" style="color:var(--rc-orange);">◼</span><span>Attendance</span></div>
       <div class="nav-item" id="nav-trainer-students" onclick="showPage('trainer-students')"><span class="nav-icon" style="color:var(--rc-green);">◼</span><span>My Students</span></div>
       <div class="nav-item" id="nav-trainer-schedule" onclick="showPage('trainer-schedule')"><span class="nav-icon" style="color:#7c3aed;">◼</span><span>All Schedules</span></div>
+      <div class="nav-item" id="nav-trainer-progress" onclick="showPage('trainer-progress')"><span class="nav-icon" style="color:#2563eb;">◼</span><span>Progress</span></div>
       <div style="margin-top:24px;padding:14px 12px;background:var(--surface2);border-radius:8px;border:1px solid ${t?.color||"#60a5fa"}33;font-size:11px;">
         <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:8px;">Your Role</div>
-        <div style="color:var(--muted);line-height:1.7;">✓ Mark attendance<br>👁 View student info<br>👁 View fee status<br>🔒 Editing → Admin only</div>
+        <div style="color:var(--muted);line-height:1.7;">✓ Mark attendance<br>✓ Update progress<br>👁 View student info<br>🔒 Fees & settings → Admin only</div>
       </div>`;
   }
   setTimeout(applyInstSettings, 0);
@@ -1902,6 +1946,10 @@ function buildMobileNav(){
       <button class="mnav-item" id="mnav-trainer-schedule" onclick="showPage('trainer-schedule')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Schedule
+      </button>
+      <button class="mnav-item" id="mnav-trainer-progress" onclick="showPage('trainer-progress')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Progress
       </button>`;
   }
 }
@@ -1911,7 +1959,7 @@ function showPage(name){
   // Role guard — trainer cannot access admin pages, parent cannot access either
   const adminPages=["admin-dashboard","admin-trainers","admin-students","admin-attendance",
     "admin-fees","admin-schedule","admin-reports","admin-progress"];
-  const trainerPages=["trainer-dashboard","trainer-attendance","trainer-students","trainer-schedule"];
+  const trainerPages=["trainer-dashboard","trainer-attendance","trainer-students","trainer-schedule","trainer-progress"];
   const role=currentUser?.role;
   if(role==="trainer" && adminPages.includes(name)){
     console.warn("CubeTrack: access denied —",name,"is admin-only");
@@ -1945,6 +1993,7 @@ function showPage(name){
     "trainer-attendance":renderTrainerAttendance,
     "trainer-students":renderTrainerStudents,
     "trainer-schedule":()=>renderSchedule("trainerScheduleGrid"),
+    "trainer-progress":renderTrainerProgress,
   };
   if(renders[name])renders[name]();
   updateFeesDot();
@@ -2283,6 +2332,127 @@ if("serviceWorker" in navigator){
       pushToSheet(true);
     }
   });
+}
+
+
+// ══ TRAINER PROGRESS PAGE ════════════════════════════════════════════════════
+let _trainerProgressStudent = null;
+
+function renderTrainerProgress(){
+  const search=(document.getElementById("trainerProgressSearch")?.value||"").toLowerCase();
+  const myStu=myStudents().filter(s=>
+    !search||s.name.toLowerCase().includes(search)||s.roll.includes(search)
+  );
+  const grid=document.getElementById("trainerProgressGrid");
+  if(!grid) return;
+
+  if(!myStu.length){
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--dim);font-size:13px;">No students assigned yet.</div>`;
+    return;
+  }
+
+  grid.innerHTML=myStu.map(s=>{
+    const sp=studentProgress[s.id]||{};
+    const totalPuzzles=puzzleTypes.length;
+    const donePuzzles=puzzleTypes.filter(pt=>{const pp=sp[pt.id];return pp&&pt.levels.every(lv=>pp[lv.id]?.status==="completed");}).length;
+    const inProgress=puzzleTypes.filter(pt=>{const pp=sp[pt.id];return pp&&pt.levels.some(lv=>pp[lv.id]?.status==="inprogress"||pp[lv.id]?.status==="completed")&&!pt.levels.every(lv=>pp[lv.id]?.status==="completed");}).length;
+    const pct=totalPuzzles>0?Math.round(donePuzzles/totalPuzzles*100):0;
+    return`<div class="student-progress-card ${_trainerProgressStudent===s.id?"selected":""}" onclick="showTrainerStudentProgress(${s.id})">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:${s.color}22;color:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;flex-shrink:0;">${initials(s.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${s.roll}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;background:${pct>=80?"var(--rc-green)":pct>=40?"var(--rc-orange)":"var(--rc-blue)"}"></div></div>
+        <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);min-width:30px;">${pct}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);">${donePuzzles} done · ${inProgress} in progress</div>
+    </div>`;
+  }).join("");
+}
+
+function showTrainerStudentProgress(sid){
+  _trainerProgressStudent=sid;
+  const s=students.find(x=>x.id===sid);
+  if(!s) return;
+
+  // Validate trainer owns this student
+  if(s.trainerId!==currentUser.trainerId){showToast("Not your student","error");return;}
+
+  document.getElementById("trainerProgressDetail").style.display="block";
+
+  const av=document.getElementById("trainerProgressAvatar");
+  av.style.cssText=`width:40px;height:40px;border-radius:8px;background:${s.color}22;color:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;`;
+  av.textContent=initials(s.name);
+  document.getElementById("trainerProgressName").textContent=s.name;
+  document.getElementById("trainerProgressMeta").textContent=`Roll ${s.roll} · ${getAttendedDates(s.id).length} classes attended`;
+
+  // Wire update button to open progress modal pre-selected on this student
+  const btn=document.getElementById("trainerProgressUpdateBtn");
+  if(btn) btn.onclick=()=>openProgressModal(sid);
+
+  // Summary stats
+  const sp=studentProgress[sid]||{};
+  const done=puzzleTypes.filter(pt=>pt.levels.every(lv=>sp[pt.id]?.[lv.id]?.status==="completed")).length;
+  const inProg=puzzleTypes.filter(pt=>pt.levels.some(lv=>sp[pt.id]?.[lv.id]?.status==="inprogress"||sp[pt.id]?.[lv.id]?.status==="completed")&&!pt.levels.every(lv=>sp[pt.id]?.[lv.id]?.status==="completed")).length;
+  document.getElementById("trainerProgressStats").innerHTML=`
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;">
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">PUZZLES DONE</div>
+      <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:22px;color:var(--rc-green);">${done}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;">
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">IN PROGRESS</div>
+      <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:22px;color:var(--rc-orange);">${inProg}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center;">
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">NOT STARTED</div>
+      <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:22px;color:var(--dim);">${puzzleTypes.length-done-inProg}</div>
+    </div>`;
+
+  // Puzzle cards (reuse admin rendering but scoped to this student)
+  document.getElementById("trainerProgressCards").innerHTML=puzzleTypes.length?puzzleTypes.map(pt=>{
+    const pp=sp[pt.id]||{};
+    const lvDone=pt.levels.filter(lv=>pp[lv.id]?.status==="completed").length;
+    const pct=pt.levels.length>0?Math.round(lvDone/pt.levels.length*100):0;
+    const barColor=pct>=80?"var(--rc-green)":pct>=40?"var(--rc-orange)":"var(--rc-blue)";
+    return`<div class="puzzle-card">
+      <div class="puzzle-card-head">
+        <span class="puzzle-card-title">🧩 ${pt.name}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:80px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .4s;"></div>
+          </div>
+          <span style="font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:${barColor};">${pct}%</span>
+          <button class="btn btn-ghost btn-sm" onclick="openProgressModal(${sid});setTimeout(()=>{document.getElementById('prog_puzzle').value='${pt.id}';renderProgressLevelPicker();},100)">✎ Update</button>
+        </div>
+      </div>
+      <div class="puzzle-card-body">
+        ${pt.levels.map((lv,i)=>{
+          const st=pp[lv.id]?.status||"notstarted";
+          const dt=pp[lv.id]?.date||"";
+          return`<div class="level-row">
+            <div class="level-name">
+              <div>L${i+1}: ${lv.name}</div>
+              <div class="level-method">${lv.method||""}</div>
+            </div>
+            <span class="level-status ls-${st}">${st==="completed"?"✓ Done":st==="inprogress"?"~ In Progress":"○ Not started"}</span>
+            ${dt?`<span style="font-size:10px;color:var(--dim);font-family:'Space Mono',monospace;">${dt}</span>`:""}
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join(""):`<div style="text-align:center;padding:20px;color:var(--dim);font-size:13px;">No puzzles configured yet. Ask your admin.</div>`;
+
+  renderTrainerProgress(); // refresh card selection highlight
+}
+
+function closeTrainerProgressDetail(){
+  _trainerProgressStudent=null;
+  document.getElementById("trainerProgressDetail").style.display="none";
+  renderTrainerProgress();
 }
 
 // ══ ADMIN DASHBOARD ════════════════════════════════════════════════════════════
@@ -3480,6 +3650,11 @@ function saveProgress(){
   // Refresh view
   if(currentProgressStudent === sid) showStudentProgress(sid);
   renderProgressStudentList();
+  // Also refresh trainer progress view if trainer is on that page
+  if(currentPage==="trainer-progress"){
+    renderTrainerProgress();
+    if(_trainerProgressStudent===sid) showTrainerStudentProgress(sid);
+  }
 }
 
 // ── Progress page rendering ───────────────────────────────────────────────────
