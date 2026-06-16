@@ -444,6 +444,9 @@ select.form-input option{background:var(--surface);}
 .main{padding-bottom:max(80px,calc(60px + env(safe-area-inset-bottom)));}
 #mobileNav{padding-bottom:env(safe-area-inset-bottom);}
 
+/* ── Admin toggle slider ── */
+#t_isAdminSlider.on{background:var(--rc-red)!important;}
+#t_isAdminSlider.on .slider-thumb{transform:translateX(18px)!important;}
 </style>
 </head>
 <body>
@@ -935,6 +938,20 @@ select.form-input option{background:var(--surface);}
     </div>
     <div class="form-group"><label class="form-label">Phone (for WA alerts)</label><input class="form-input" id="t_phone" placeholder="9876543210"></div>
     <div class="modal-footer">
+      <div id="t_adminToggleRow" style="padding:12px 16px;background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.15);border-radius:10px;margin-bottom:4px;display:none;">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin:0;" onclick="toggleAdminSlider()">
+          <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
+            <span id="t_isAdminSlider" style="position:absolute;inset:0;background:var(--border);border-radius:11px;transition:.2s;display:flex;align-items:center;padding:2px;">
+              <span class="slider-thumb" style="width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;transform:translateX(0);display:block;box-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none;"></span>
+            </span>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Grant Admin Access</div>
+            <div style="font-size:11px;color:var(--muted);">Can manage students, fees, attendance and settings. Only master admin can grant this.</div>
+          </div>
+        </label>
+        <input type="checkbox" id="t_isAdmin" style="display:none;">
+      </div>
       <button class="btn btn-ghost" onclick="closeModal('modalTrainer')">Cancel</button>
       <button class="btn btn-primary" id="trainerSaveBtn" onclick="saveTrainer()">Add Trainer</button>
     </div>
@@ -1123,6 +1140,29 @@ select.form-input option{background:var(--surface);}
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:12px;">Fee becomes due after this many attended classes. E.g. 4 = every 4 classes, 8 = every 8, 30 = monthly (if 30 classes/month).</div>
 
+
+    <div class="modal-section">💳 Payment &amp; Fee Reminders</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">UPI ID</label>
+        <input class="form-input" id="inst_upiId" placeholder="name@paytm / name@gpay / name@upi">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Shown in every fee reminder WhatsApp message</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">UPI Account Name</label>
+        <input class="form-input" id="inst_upiName" placeholder="Account holder name">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Link <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input class="form-input" id="inst_paymentLink" placeholder="https://rzp.io/l/... or PhonePe / GPay link">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Razorpay, Instamojo, PhonePe Business, Google Pay etc.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Custom note in fee messages <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+      <input class="form-input" id="inst_paymentNote" placeholder="e.g. Please pay before the 5th of each month">
+    </div>
+
     <div class="modal-section">Branding</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Primary Color</label><input class="form-input" id="inst_primaryColor" type="color" style="height:42px;padding:4px 8px;cursor:pointer;"></div>
@@ -1205,6 +1245,10 @@ const DEFAULT_SETTINGS = {
   setupDone:    false,
   supportContact: "",   // your WhatsApp / email for customer support
   supportLabel:   "Need help?",
+  upiId:          "",   // UPI ID e.g. name@upi or 9876543210@paytm
+  upiName:        "",   // account holder name shown in UPI
+  paymentLink:    "",   // any payment link: Razorpay, PhonePe, GPay etc.
+  paymentNote:    "",   // custom note shown at bottom of fee message
 };
 
 let instSettings = {};
@@ -1340,6 +1384,10 @@ function setSyncState(state,label){
 function fmtNow(){ return new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}); }
 
 function openSyncSettings(){
+  if(currentUser && currentUser.role !== "admin"){
+    showToast("Sync settings are admin only","error");
+    return;
+  }
   document.getElementById("syncUrlInput").value=getSyncUrl();
   document.getElementById("syncTestResult").style.display="none";
   setSyncState(getSyncUrl()?"ok":"off",getSyncUrl()?"Connected":"Not connected");
@@ -1460,6 +1508,10 @@ function openSetupWizard(){
 }
 
 function openInstSettings(isWizard){
+  if(currentUser && currentUser.role !== "admin"){
+    showToast("Institute settings are admin only","error");
+    return;
+  }
   const m = document.getElementById("modalInstSettings");
   if(!m) return;
   document.getElementById("inst_name").value        = getInst("name");
@@ -1469,6 +1521,11 @@ function openInstSettings(isWizard){
   document.getElementById("inst_studentLabel").value= getInst("studentLabel");
   document.getElementById("inst_studentsLabel").value=getInst("studentsLabel");
   document.getElementById("inst_currency").value    = getInst("currency");
+  const _upi=document.getElementById("inst_upiId"); if(_upi) _upi.value=getInst("upiId")||"";
+  const _un=document.getElementById("inst_upiName"); if(_un) _un.value=getInst("upiName")||"";
+  const _pl=document.getElementById("inst_paymentLink"); if(_pl) _pl.value=getInst("paymentLink")||"";
+  const _pn=document.getElementById("inst_paymentNote"); if(_pn) _pn.value=getInst("paymentNote")||"";
+
   document.getElementById("inst_classesPerFee").value=getInst("classesPerFee");
   document.getElementById("inst_primaryColor").value = getInst("primaryColor");
   document.getElementById("inst_accentColor").value  = getInst("accentColor");
@@ -1482,6 +1539,10 @@ function openInstSettings(isWizard){
 }
 
 function saveInstSettings(){
+  if(currentUser && currentUser.role !== "admin"){
+    showToast("Institute settings are admin only","error");
+    return;
+  }
   instSettings.name          = document.getElementById("inst_name").value.trim() || "My Institute";
   instSettings.tagline       = document.getElementById("inst_tagline").value.trim();
   instSettings.trainerLabel  = document.getElementById("inst_trainerLabel").value.trim() || "Trainer";
@@ -1490,6 +1551,14 @@ function saveInstSettings(){
   instSettings.studentsLabel = document.getElementById("inst_studentsLabel").value.trim() || "Students";
   instSettings.currency      = (document.getElementById("inst_currency").value.trim() || "Rs.").replace(/[0-9,]/g,"").trim() || "Rs.";
   instSettings.classesPerFee = parseInt(document.getElementById("inst_classesPerFee").value) || 4;
+  instSettings.upiId       = document.getElementById("inst_upiId")?.value.trim()||"";
+  instSettings.upiName     = document.getElementById("inst_upiName")?.value.trim()||"";
+  instSettings.paymentLink = document.getElementById("inst_paymentLink")?.value.trim()||"";
+  instSettings.paymentNote = document.getElementById("inst_paymentNote")?.value.trim()||"";
+  instSettings.upiId       = document.getElementById("inst_upiId")?.value.trim()||"";
+  instSettings.upiName     = document.getElementById("inst_upiName")?.value.trim()||"";
+  instSettings.paymentLink = document.getElementById("inst_paymentLink")?.value.trim()||"";
+  instSettings.paymentNote = document.getElementById("inst_paymentNote")?.value.trim()||"";
   instSettings.primaryColor  = document.getElementById("inst_primaryColor").value;
   instSettings.accentColor   = document.getElementById("inst_accentColor").value;
   instSettings.logoColor1    = document.getElementById("inst_logoColor1").value;
@@ -1516,8 +1585,11 @@ function waOpen(phone, msg){
 function sendWhatsApp(studentId, type){
   const s=students.find(x=>x.id===studentId);
   if(!s){ showToast("Student not found","error"); return; }
-  if(!s.phone){
-    if(confirm("No phone saved for "+s.name+". Open profile to add it?")) openEditStudent(studentId);
+
+  // Use parent phone as fallback if student has no direct phone
+  const phone=s.phone||s.parentPhone;
+  if(!phone){
+    if(confirm("No phone saved for "+s.name+" or their parent. Open profile to add it?")) openEditStudent(studentId);
     return;
   }
   const t=getTrainer(s.trainerId);
@@ -1525,23 +1597,97 @@ function sendWhatsApp(studentId, type){
   const firstName=s.name.split(" ")[0];
   const date=new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
   let msg="";
-  if(type==="absent")
-    msg="Hi "+firstName+", this is "+trainerName+". You were marked *absent* on "+date+". Please let us know if there is a reason. We miss you in class!";
-  else if(type==="late")
-    msg="Hi "+firstName+", this is "+trainerName+". You were marked *late* on "+date+". Please try to arrive on time. See you next class!";
-  else if(type==="reminder")
-    msg="Hi "+firstName+", this is "+trainerName+". Reminder: You have *Rubik's Cube class today* at "+fmt12(s.start)+"! Please come on time. See you soon!";
-  else if(type==="fee"){
-    const fs=getFeeStatus(studentId);
-    const due=fs.pendingCycles*s.fee;
-    msg="Hi "+firstName+", this is "+trainerName+". Your fee payment of *"+CUR()+" "+due.toLocaleString("en-IN")+"* is pending ("+fs.pendingCycles+" cycle"+(fs.pendingCycles>1?"s":"")+" x "+CUR()+" "+s.fee.toLocaleString("en-IN")+"). Please clear it at your earliest convenience. Thank you!";
-  } else if(type==="milestone"){
-    const fs=getFeeStatus(studentId);
-    msg="Hi "+firstName+", this is "+trainerName+". Great work! You have completed *"+fs.totalAttended+" classes*. Your next fee cycle is now due (Rs."+s.fee.toLocaleString("en-IN")+"). Please arrange payment. Thank you!";
-  } else if(type==="receipt"){
-    msg="Hi "+firstName+", this is "+trainerName+". We have received your fee payment of *Rs."+s.fee.toLocaleString("en-IN")+"*. Thank you! Your attendance continues.";
+  // ── Payment info from institute settings ──────────────────────────────────
+  const upiId      = getInst("upiId")||"";
+  const upiName    = getInst("upiName")||"";
+  const payLink    = getInst("paymentLink")||"";
+  const payNote    = getInst("paymentNote")||"";
+  const instName   = INAME();
+
+  // ── Build payment block (used in fee/milestone/receipt messages) ───────────
+  function buildPayBlock(amtStr){
+    let block = "";
+    if(upiId || payLink){
+      block += "\n\n💳 *How to Pay:*";
+      if(upiId) block += "\nUPI: *"+upiId+"*"+(upiName?" ("+upiName+")":"");
+      if(payLink) block += "\n🔗 Pay online: "+payLink;
+      block += "\n\n📌 Please save this number as *"+instName+"* to pay directly.";
+    }
+    if(payNote) block += "\n\n📝 "+payNote;
+    return block;
   }
-  if(msg) waOpen(s.phone, msg);
+
+  // ── Build attendance report ────────────────────────────────────────────────
+  function buildAttReport(){
+    const fs       = getFeeStatus(studentId);
+    const allDates = getAttendedDates(studentId);   // all present/late dates, sorted asc
+    const cpf      = CLASSES_PER_FEE();
+    // Last 3 cycles worth of dates + current partial cycle
+    const showDates = allDates.slice(-Math.min(allDates.length, cpf*2+5));
+    let report = "\n\n📊 *Attendance Summary:*";
+    report += "\n• Total classes attended: *"+fs.totalAttended+"*";
+    report += "\n• Completed fee cycles: *"+fs.completedCycles+"*";
+    report += "\n• Classes in current cycle: *"+fs.classesInCycle+" / "+cpf+"*";
+    if(showDates.length){
+      report += "\n\n🗓 *Recent classes attended:*";
+      // Group by month
+      const byMonth = {};
+      showDates.forEach(d=>{
+        const dt = new Date(d+"T00:00:00");
+        const key = dt.toLocaleDateString("en-IN",{month:"short",year:"numeric"});
+        if(!byMonth[key]) byMonth[key]=[];
+        byMonth[key].push(dt.getDate());
+      });
+      Object.entries(byMonth).forEach(([mon,days])=>{
+        report += "\n  "+mon+": "+days.join(", ");
+      });
+    }
+    return {fs, report};
+  }
+
+  if(type==="absent")
+    msg="Hi "+firstName+", this is *"+instName+"* ("+trainerName+").\n\nYou were marked *absent* on "+date+". If you missed class, no worries — please inform us in advance next time. We miss you!\n\nSchedule: "+fmt12(s.start)+" – "+fmt12(s.end)+", "+s.days.join("/");
+  else if(type==="late")
+    msg="Hi "+firstName+", this is *"+instName+"* ("+trainerName+").\n\nYou were marked *late* on "+date+". Please try to arrive on time — it helps the whole class. See you next class! 😊";
+  else if(type==="reminder")
+    msg="Hi "+firstName+", this is *"+instName+"* ("+trainerName+").\n\n⏰ Reminder: You have class *today* at *"+fmt12(s.start)+"*!\n\nSee you soon! 🎯";
+  else if(type==="fee"){
+    const {fs, report} = buildAttReport();
+    const due = fs.pendingCycles*s.fee;
+    const cycleDetail = fs.pendingCycles>1
+      ? fs.pendingCycles+" cycles × "+CUR()+" "+s.fee.toLocaleString("en-IN")
+      : "1 cycle";
+    msg = "Hi "+firstName+", this is *"+instName+"*.\n\n";
+    msg += "💰 *Fee Reminder*\n";
+    msg += "Amount due: *"+CUR()+" "+due.toLocaleString("en-IN")+"* ("+cycleDetail+")";
+    msg += report;
+    msg += buildPayBlock(CUR()+" "+due.toLocaleString("en-IN"));
+    msg += "\n\nThank you! 🙏";
+  } else if(type==="milestone"){
+    const {fs, report} = buildAttReport();
+    const due = fs.pendingCycles*s.fee;
+    msg = "Hi "+firstName+", Great progress! 🎉\n\nThis is *"+instName+"*.\n\n";
+    msg += "⭐ You have completed *"+fs.totalAttended+" classes*!";
+    msg += report;
+    msg += "\n\n💰 *Fee Due:* "+CUR()+" "+due.toLocaleString("en-IN");
+    msg += buildPayBlock(CUR()+" "+due.toLocaleString("en-IN"));
+    msg += "\n\nKeep it up! 💪";
+  } else if(type==="receipt"){
+    const pays = (feePayments[studentId]||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+    const lastPay = pays[0];
+    const totalPaid = pays.reduce((sum,p)=>sum+Number(p.amount),0);
+    const fs = getFeeStatus(studentId);
+    msg = "Hi "+firstName+", this is *"+instName+"*. ✅\n\n";
+    msg += "💳 *Payment Received!*\n";
+    if(lastPay) msg += "Amount: *"+CUR()+" "+Number(lastPay.amount).toLocaleString("en-IN")+"*\nDate: "+lastPay.date+"\nMode: "+lastPay.mode+(lastPay.note?" ("+lastPay.note+")":"")+"\n";
+    msg += "\n📊 *Account Summary:*";
+    msg += "\n• Total classes attended: "+fs.totalAttended;
+    msg += "\n• Total paid so far: "+CUR()+" "+totalPaid.toLocaleString("en-IN");
+    msg += "\n• Remaining balance: "+CUR()+" "+(fs.pendingCycles*s.fee).toLocaleString("en-IN");
+    msg += "\n\nThank you for your payment! 🙏";
+    if(payNote) msg += "\n\n📝 "+payNote;
+  }
+  if(msg) waOpen(phone, msg);
 }
 
 function sendTrainerDayReminder(trainerId){
@@ -1758,7 +1904,11 @@ function doLogin(){
     }
   } else {
     const t=trainers.find(x=>x.username===user&&x.password===pass);
-    if(t){currentUser={role:"trainer",trainerId:t.id};saveSession();launchApp();}
+    if(t){
+      const role=t.isAdmin?"admin":"trainer";
+      currentUser={role,trainerId:t.id,trainerName:t.name};
+      saveSession();launchApp();
+    }
     else{
       if(!trainers.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
       else if(!trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
@@ -2455,6 +2605,111 @@ function closeTrainerProgressDetail(){
   renderTrainerProgress();
 }
 
+
+// ── Master admin & admin-trainer helpers ──────────────────────────────────────
+function isMasterAdmin(){
+  // Only the original "admin" account (no trainerId) can grant/revoke admin rights
+  return currentUser?.role==="admin" && !currentUser.trainerId;
+}
+function toggleAdminSlider(){
+  const cb=document.getElementById("t_isAdmin");
+  const sl=document.getElementById("t_isAdminSlider");
+  if(!cb||!sl) return;
+  cb.checked=!cb.checked;
+  sl.classList.toggle("on",cb.checked);
+}
+function setAdminSlider(val){
+  const cb=document.getElementById("t_isAdmin");
+  const sl=document.getElementById("t_isAdminSlider");
+  if(!cb||!sl) return;
+  cb.checked=!!val;
+  sl.classList.toggle("on",!!val);
+}
+
+
+// ── Fee reminder preview modal ────────────────────────────────────────────────
+function previewFeeMessage(studentId){
+  const s=students.find(x=>x.id===studentId);
+  if(!s){showToast("Student not found","error");return;}
+  const fs=getFeeStatus(studentId);
+  if(fs.pendingCycles===0){showToast(s.name+" has no pending fees","success");return;}
+
+  // Build the preview (same logic as sendWhatsApp but shown in modal first)
+  const upiId    = getInst("upiId")||"";
+  const upiName  = getInst("upiName")||"";
+  const payLink  = getInst("paymentLink")||"";
+  const payNote  = getInst("paymentNote")||"";
+  const instName = INAME();
+  const t        = getTrainer(s.trainerId);
+  const firstName= s.name.split(" ")[0];
+  const trainerName=t?t.name.split(" ")[0]:"Trainer";
+  const cpf      = CLASSES_PER_FEE();
+  const allDates = getAttendedDates(studentId);
+  const due      = fs.pendingCycles*s.fee;
+
+  // Attendance by month
+  const showDates=allDates.slice(-Math.min(allDates.length,cpf*2+5));
+  const byMonth={};
+  showDates.forEach(d=>{
+    const dt=new Date(d+"T00:00:00");
+    const key=dt.toLocaleDateString("en-IN",{month:"short",year:"numeric"});
+    if(!byMonth[key]) byMonth[key]=[];
+    byMonth[key].push(dt.getDate());
+  });
+
+  const el=document.getElementById("feePreviewContent");
+  if(!el){openFeePreviewModal(studentId);return;}
+  el.innerHTML=`
+    <div class="pay-student-header" style="margin-bottom:14px;">${avatarHTML(s,44)}<div>
+      <div style="font-weight:700;font-size:15px;">${s.name}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">${s.roll} · ${trainerBadge(t)}</div>
+    </div></div>
+
+    <!-- Stats strip -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;">ATTENDED</div>
+        <div style="font-weight:800;font-size:18px;">${fs.totalAttended}</div>
+      </div>
+      <div style="background:rgba(248,113,113,.08);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;">DUE</div>
+        <div style="font-weight:800;font-size:18px;color:var(--rc-red);">${CUR()} ${due.toLocaleString("en-IN")}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;">CYCLES DUE</div>
+        <div style="font-weight:800;font-size:18px;">${fs.pendingCycles}</div>
+      </div>
+    </div>
+
+    <!-- Attendance dates -->
+    <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Attendance Report</div>
+      ${Object.keys(byMonth).length?Object.entries(byMonth).map(([mon,days])=>`
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+          <span style="font-size:11px;font-weight:600;color:var(--text);min-width:70px;">${mon}</span>
+          <span style="font-size:12px;color:var(--muted);">${days.join(", ")}</span>
+          <span style="font-size:10px;background:var(--rc-blue);color:#fff;border-radius:4px;padding:1px 5px;margin-left:auto;">${days.length} classes</span>
+        </div>`).join(""):`<div style="color:var(--dim);font-size:12px;">No attendance records yet</div>`}
+    </div>
+
+    <!-- Payment options -->
+    <div style="background:rgba(42,157,78,.06);border:1px solid rgba(42,157,78,.2);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Payment Info in Message</div>
+      ${upiId?`<div style="font-size:13px;margin-bottom:6px;">💳 UPI: <strong>${upiId}</strong>${upiName?" ("+upiName+")":""}</div>`:""}
+      ${payLink?`<div style="font-size:13px;margin-bottom:6px;">🔗 Link: <a href="${payLink}" target="_blank" style="color:var(--rc-blue);">${payLink.length>40?payLink.slice(0,40)+"…":payLink}</a></div>`:""}
+      ${!upiId&&!payLink?`<div style="color:var(--muted);font-size:12px;">⚠ No payment details set — <button onclick="closeModal('modalFeePreview');openInstSettings(false);" style="background:none;border:none;color:var(--rc-blue);cursor:pointer;text-decoration:underline;font-size:12px;">Add UPI / payment link in Settings</button></div>`:""}
+      ${payNote?`<div style="font-size:12px;color:var(--muted);margin-top:4px;">📝 ${payNote}</div>`:""}
+    </div>
+
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-ghost" onclick="closeModal('modalFeePreview')">Cancel</button>
+      ${s.parentPhone?`<button class="btn btn-success" onclick="closeModal('modalFeePreview');sendWhatsApp(${s.id},'fee');" style="background:var(--rc-green);color:#fff;">📲 Send to Parent (${s.parentPhone})</button>`:""}
+      ${s.phone?`<button class="btn btn-success" onclick="closeModal('modalFeePreview');sendWhatsApp(${s.id},'fee');" style="background:var(--rc-green);color:#fff;">📲 Send to ${firstName} (${s.phone})</button>`:""}
+      ${!s.phone&&!s.parentPhone?`<button class="btn btn-ghost" onclick="closeModal('modalFeePreview');openEditStudent(${s.id});">📱 Add Phone First</button>`:""}
+    </div>`;
+  openModal("modalFeePreview");
+}
+
 // ══ ADMIN DASHBOARD ════════════════════════════════════════════════════════════
 function renderAdminDashboard(){
   const today=todayStr(),dow=getDow(today);
@@ -2503,7 +2758,7 @@ function renderAdminDashboard(){
   // Fee alerts
   document.getElementById("adminFeeAlertBody").innerHTML=dueStudents.slice(0,8).map(s=>{
     const fs=feeStatusMap.get(s.id),t=getTrainer(s.trainerId);
-    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono c-red">${CUR()} ${(fs.pendingCycles*s.fee).toLocaleString("en-IN")}</td><td style="display:flex;gap:6px;align-items:center;"><button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">Collect</button>${s.phone?`<button class="btn-wa" onclick="sendWhatsApp(${s.id},'fee')">WA</button>`:""}</td></tr>`;
+    return`<tr><td>${studentCell(s)}</td><td>${trainerBadge(t)}</td><td class="mono c-red">${CUR()} ${(fs.pendingCycles*s.fee).toLocaleString("en-IN")}</td><td style="display:flex;gap:6px;align-items:center;"><button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})">Collect</button>${(s.phone||s.parentPhone)?`<button class="btn-wa" onclick="previewFeeMessage(${s.id})" title="Preview & Send Fee Reminder">📲 WA</button>`:""}</td></tr>`;
   }).join("")||`<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--rc-green);">✓ No pending fees</td></tr>`;
 }
 
@@ -2867,7 +3122,16 @@ function renderTrainerStudents(){
 }
 
 // ══ TRAINER / STUDENT MODALS (Admin only) ══════════════════════════════════════
-function openAddTrainer(){editTrainerId=null;document.getElementById("trainerModalTitle").textContent="Add "+T();document.getElementById("trainerSaveBtn").textContent="Add "+T();["t_name","t_username","t_password","t_spec","t_phone"].forEach(id=>document.getElementById(id).value="");openModal("modalTrainer");}
+function openAddTrainer(){
+  editTrainerId=null;
+  document.getElementById("trainerModalTitle").textContent="Add "+T();
+  document.getElementById("trainerSaveBtn").textContent="Add "+T();
+  ["t_name","t_username","t_password","t_spec","t_phone"].forEach(id=>document.getElementById(id).value="");
+  setAdminSlider(false);
+  const row=document.getElementById("t_adminToggleRow");
+  if(row) row.style.display=currentUser?.role==="admin"?"":"none";
+  openModal("modalTrainer");
+}
 function openEditTrainer(id){
   const t=trainers.find(x=>x.id===id);if(!t)return;
   editTrainerId=id;document.getElementById("trainerModalTitle").textContent="Edit "+T();document.getElementById("trainerSaveBtn").textContent="Save Changes";
@@ -2888,7 +3152,8 @@ function _saveTrainer(){
   if(trainers.some(t=>t.username===user&&t.id!==editTrainerId)){showToast("Username already exists","error");return;}
   const tphone=document.getElementById("t_phone").value.trim();
   if(editTrainerId){
-    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass||t.password,spec:document.getElementById("t_spec").value.trim(),phone:tphone}:t);
+    const grantAdmin=isMasterAdmin()&&!!document.getElementById("t_isAdmin")?.checked;
+    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass||t.password,spec:document.getElementById("t_spec").value.trim(),phone:tphone,isAdmin:grantAdmin}:t);
     showToast(`${name} updated!`,"success");
   } else {
     const id=Date.now();
@@ -4337,9 +4602,9 @@ async function init(){
     if(savedSession.role==="admin"){
       sessionValid = true; // admin is always valid if creds are in localStorage
       currentUser = savedSession;
-    } else if(savedSession.role==="trainer"){
-      const t = trainers.find(x=>x.id===savedSession.trainerId);
-      if(t){ currentUser=savedSession; sessionValid=true; }
+    } else if(savedSession.trainerId){
+      const t=trainers.find(x=>x.id===savedSession.trainerId);
+      if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"trainer"}; sessionValid=true; }
     } else if(savedSession.role==="parent"){
       const s = students.find(x=>x.id===savedSession.studentId);
       if(s){ currentUser=savedSession; sessionValid=true; }
@@ -4362,5 +4627,14 @@ async function init(){
 }
 init();
 </script>
+
+<!-- ══ FEE REMINDER PREVIEW MODAL ══ -->
+<div class="modal-overlay" id="modalFeePreview" onclick="closeModal('modalFeePreview')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal-title">📲 Fee Reminder Preview</div>
+    <div id="feePreviewContent" style="max-height:70vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
 </body>
 </html>
