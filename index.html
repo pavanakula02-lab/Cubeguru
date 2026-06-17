@@ -1787,19 +1787,29 @@ function getAttendedDates(sid){
 }
 function getFeeStatus(sid){
   const att=getAttendedDates(sid),total=att.length;
-  // Normalize cycles to Number — data from sheet may come back as strings
   const paidCycles=new Set((feePayments[sid]||[]).map(p=>Number(p.cycle)));
-  const completed=Math.floor(total/CLASSES_PER_FEE());
+  const cpf=CLASSES_PER_FEE();
+  const completed=Math.floor(total/cpf);  // fully completed cycles
+  const rem=total%cpf;                     // classes in current partial cycle
+  // Current cycle number (1-based): if rem>0 there is an active partial cycle
+  const currentCycle=completed+(rem>0?1:0);
+
+  // Count pending: all completed cycles not yet paid
   let pending=0;
   for(let c=1;c<=completed;c++) if(!paidCycles.has(c)) pending++;
-  const rem=total%CLASSES_PER_FEE();
+  // ALSO count current partial cycle as pending if it has any classes and isn't paid
+  // This satisfies "fee should be pending by default as soon as cycle starts"
+  if(rem>0 && !paidCycles.has(currentCycle)) pending++;
+
   return{
     totalAttended:total,
     completedCycles:completed,
+    currentCycle,            // the cycle currently in progress (or 0 if no attendance)
     paidCycles,
     pendingCycles:pending,
-    classesInCycle: total===0 ? 0 : rem===0 ? CLASSES_PER_FEE() : rem,
-    classesUntilDue: total===0 ? CLASSES_PER_FEE() : rem===0 ? 0 : CLASSES_PER_FEE()-rem
+    classesInCycle: total===0 ? 0 : rem===0 ? cpf : rem,
+    classesUntilDue: total===0 ? cpf : rem===0 ? 0 : cpf-rem,
+    hasPartialCycle: rem>0   // true when mid-cycle
   };
 }
 function getTrainer(id){return trainers.find(t=>t.id===id);}
@@ -2898,10 +2908,17 @@ function renderAdminFees(){
       <td class="mono">${CUR()} ${s.fee.toLocaleString("en-IN")}</td>
       <td class="mono c-blue">${fs.totalAttended}</td>
       <td>${dotsHTML(Math.min(fs.classesInCycle,CLASSES_PER_FEE()),CLASSES_PER_FEE(),isDue?"#f87171":null)}<div style="font-size:10px;font-family:'DM Mono',monospace;color:${isDue?"#f87171":"#4a5068"};margin-top:3px;">${fs.classesUntilDue===0?"Due now!":fs.classesUntilDue+" left"}</div></td>
-      <td class="mono" style="font-size:14px;font-weight:700;color:${isDue?"#f87171":"#6ee7b7"};">${fs.pendingCycles}</td>
+      <td class="mono" style="font-size:14px;font-weight:700;color:${isDue?"#f87171":"#6ee7b7"};">
+        ${fs.pendingCycles}
+        ${fs.hasPartialCycle&&!fs.paidCycles.has(fs.currentCycle)?`<div style="font-size:9px;color:#f59e0b;font-family:'Space Mono',monospace;margin-top:1px;">(incl. current)</div>`:""}
+      </td>
       <td class="mono" style="color:${isDue?"#f87171":"#6ee7b7"};">${isDue?CUR()+" "+(fs.pendingCycles*s.fee).toLocaleString("en-IN"):"—"}</td>
       <td style="white-space:nowrap;">
-        ${isDue?`<button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})" style="margin-right:4px;">💰 Collect</button>`:`<span class="badge badge-ok" style="margin-right:4px;">✓ ${fs.paidCycles.size} paid</span>`}
+        ${isDue
+          ?`<button class="btn btn-warn btn-sm" onclick="openPayModal(${s.id})" style="margin-right:4px;">💰 Collect</button>`
+          :fs.totalAttended===0
+            ?`<span class="badge" style="background:var(--surface2);color:var(--dim);margin-right:4px;">No classes yet</span>`
+            :`<span class="badge badge-ok" style="margin-right:4px;">✓ ${fs.paidCycles.size} paid</span>`}
         <button class="btn btn-ghost btn-sm" onclick="openFeeHistory(${s.id})" title="View/Edit payments">📋</button>
       </td>
     </tr>`;
@@ -3304,6 +3321,55 @@ function refreshFeeViews(){
   if(currentPage==="trainer-attendance") renderTrainerAttendance();
 }
 
+
+// ── Manual payment entry (from fee history modal) ─────────────────────────────
+function addManualPayment(sid){
+  const s=students.find(x=>x.id===sid);
+  if(!s){ showToast("Student not found","error"); return; }
+
+  const cycleEl  = document.getElementById("manualCycleNum");
+  const amtEl    = document.getElementById("manualAmount");
+  const dateEl   = document.getElementById("manualDate");
+  const modeEl   = document.getElementById("manualMode");
+  const noteEl   = document.getElementById("manualNote");
+
+  const cycle  = parseInt(cycleEl?.value);
+  const amount = parseFloat(amtEl?.value);
+  const date   = dateEl?.value || todayStr();
+  const mode   = modeEl?.value || "Cash";
+  const note   = noteEl?.value.trim() || "";
+
+  if(!cycle||cycle<1){ showToast("Enter a valid cycle number","error"); return; }
+  if(!amount||amount<0){ showToast("Enter a valid amount","error"); return; }
+
+  // Check if this cycle already has a payment
+  const existing=(feePayments[sid]||[]).find(p=>Number(p.cycle)===cycle);
+  if(existing){
+    showConfirm(
+      `Cycle ${cycle} already has a payment of ${CUR()} ${existing.amount.toLocaleString("en-IN")} on ${existing.date}.<br><br>Add another payment for the same cycle anyway?`,
+      ()=>_doAddManualPayment(sid,cycle,amount,date,mode,note),
+      null,"Add Anyway",false
+    );
+    return;
+  }
+  _doAddManualPayment(sid,cycle,amount,date,mode,note);
+}
+
+function _doAddManualPayment(sid,cycle,amount,date,mode,note){
+  if(!feePayments[sid]) feePayments[sid]=[];
+  feePayments[sid].push({
+    cycle: Number(cycle),
+    amount: Number(amount),
+    date, mode, note,
+    id: "p"+Date.now()+"c"+cycle
+  });
+  normalizeFeePayments();
+  saveAll();
+  showToast(`Cycle ${cycle} payment of ${CUR()} ${amount.toLocaleString("en-IN")} recorded ✓`,"success");
+  renderFeeHistory();
+  refreshFeeViews();
+}
+
 // ══ FEE HISTORY MODAL ══════════════════════════════════════════════════════════
 function openFeeHistory(sid){
   if(currentUser?.role!=="admin"){showToast("Fee history is admin only","error");return;}
@@ -3382,9 +3448,42 @@ function renderFeeHistory(){
       No payments recorded yet.
     </div>`}
 
+    <!-- Manual payment entry -->
+    <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+      <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">➕ Record Manual Payment</div>
+      <div style="display:grid;grid-template-columns:80px 1fr 90px;gap:8px;align-items:end;margin-bottom:8px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Cycle #</div>
+          <input type="number" id="manualCycleNum" min="1" value="${fs.currentCycle||1}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:'Space Mono',monospace;background:var(--surface);color:var(--text);">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Amount (${CUR()})</div>
+          <input type="number" id="manualAmount" min="0" value="${s.fee}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;font-family:'Space Mono',monospace;background:var(--surface);color:var(--text);">
+        </div>
+        <button onclick="addManualPayment(${s.id})" class="btn btn-primary" style="padding:7px 14px;font-size:12px;height:36px;">+ Record</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Date</div>
+          <input type="date" id="manualDate" value="${todayStr()}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:12px;background:var(--surface);color:var(--text);">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Mode</div>
+          <select id="manualMode" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:12px;background:var(--surface);color:var(--text);">
+            ${["Cash","UPI","Bank Transfer","Cheque"].map(m=>`<option>${m}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px;">Note / Ref</div>
+          <input type="text" id="manualNote" placeholder="e.g. UPI ref" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:12px;background:var(--surface);color:var(--text);">
+        </div>
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPay')">Close</button>
-      ${fs.pendingCycles>0?`<button class="btn btn-primary" onclick="openPayModal(${s.id})">💰 Collect Fee</button>`:""}
+      <button class="btn btn-ghost" onclick="printReceipt(${s.id})">🖨 Receipt</button>
+      ${fs.pendingCycles>0?`<button class="btn btn-primary" onclick="openPayModal(${s.id})">💰 Collect</button>`:""}
     </div>`;
 }
 
@@ -3442,7 +3541,13 @@ function openPayModal(sid){
 function renderPayModal(){
   const s=students.find(x=>x.id===payStudentId);if(!s)return;
   const fs=getFeeStatus(s.id),t=getTrainer(s.trainerId);
-  const unpaid=[];for(let c=1;c<=fs.completedCycles;c++)if(!fs.paidCycles.has(c))unpaid.push(c);
+  const cpf=CLASSES_PER_FEE();
+
+  // Build unpaid list: all completed cycles + current partial cycle if unpaid
+  const unpaid=[];
+  for(let c=1;c<=fs.completedCycles;c++) if(!fs.paidCycles.has(c)) unpaid.push(c);
+  if(fs.hasPartialCycle && !fs.paidCycles.has(fs.currentCycle)) unpaid.push(fs.currentCycle);
+
   if(!unpaid.length){
     document.getElementById("payModalContent").innerHTML=`
       <div style="text-align:center;padding:24px 0;">
@@ -3471,7 +3576,9 @@ function renderPayModal(){
           <input type="checkbox" id="cyc_${c}" data-cycle="${c}" checked style="accent-color:var(--rc-red);width:16px;height:16px;flex-shrink:0;">
           <div style="flex:1;">
             <div style="font-size:13px;font-weight:600;">Cycle ${c}
-              <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px;">Classes ${(c-1)*CLASSES_PER_FEE()+1}–${c*CLASSES_PER_FEE()}</span>
+              ${c===fs.currentCycle&&fs.hasPartialCycle
+                ?`<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:600;">IN PROGRESS · ${fs.classesInCycle}/${cpf} classes</span>`
+                :`<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px;">Classes ${(c-1)*cpf+1}–${c*cpf}</span>`}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
