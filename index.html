@@ -447,6 +447,17 @@ select.form-input option{background:var(--surface);}
 /* ── Admin toggle slider ── */
 #t_isAdminSlider.on{background:var(--rc-red)!important;}
 #t_isAdminSlider.on .slider-thumb{transform:translateX(18px)!important;}
+
+/* ── Permission checkboxes ── */
+.perm-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s;}
+.perm-item:hover{border-color:var(--border2);background:var(--surface2);}
+.perm-item input[type=checkbox]{width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.perm-item input:checked ~ .perm-label{color:var(--text);}
+.perm-icon{font-size:16px;flex-shrink:0;}
+.perm-label{font-size:12px;font-weight:600;color:var(--text);}
+.perm-desc{font-size:10px;color:var(--muted);}
+.perm-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace;vertical-align:middle;margin-left:4px;}
+
 </style>
 </head>
 <body>
@@ -479,7 +490,7 @@ select.form-input option{background:var(--surface);}
     <div class="login-tagline" id="loginTagline">Class Management System</div>
     <div class="login-role-tabs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
       <button class="login-role-tab admin-tab active" id="roleTabAdmin">🔐 Admin</button>
-      <button class="login-role-tab trainer-tab" id="roleTabTrainer">👤 Trainer</button>
+      <button class="login-role-tab trainer-tab" id="roleTabTrainer">👤 Member</button>
       <button class="login-role-tab" id="roleTabPortal" style="color:var(--rc-green);">👨‍👩‍👧 Parent</button>
     </div>
     <div id="loginFields">
@@ -927,7 +938,7 @@ select.form-input option{background:var(--surface);}
 <!-- Add/Edit Trainer -->
 <div class="modal-overlay" id="modalTrainer">
   <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-title" id="trainerModalTitle">Add Trainer</div>
+    <div class="modal-title" id="trainerModalTitle">Add Member</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="t_name" placeholder="Full name"></div>
       <div class="form-group"><label class="form-label">Username *</label><input class="form-input" id="t_username" placeholder="e.g. ravi123"></div>
@@ -938,19 +949,41 @@ select.form-input option{background:var(--surface);}
     </div>
     <div class="form-group"><label class="form-label">Phone (for WA alerts)</label><input class="form-input" id="t_phone" placeholder="9876543210"></div>
     <div class="modal-footer">
-      <div id="t_adminToggleRow" style="padding:12px 16px;background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.15);border-radius:10px;margin-bottom:4px;display:none;">
-        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin:0;" onclick="toggleAdminSlider()">
-          <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
-            <span id="t_isAdminSlider" style="position:absolute;inset:0;background:var(--border);border-radius:11px;transition:.2s;display:flex;align-items:center;padding:2px;">
-              <span class="slider-thumb" style="width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;transform:translateX(0);display:block;box-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none;"></span>
-            </span>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:600;">Grant Admin Access</div>
-            <div style="font-size:11px;color:var(--muted);">Can manage students, fees, attendance and settings. Only master admin can grant this.</div>
-          </div>
-        </label>
-        <input type="checkbox" id="t_isAdmin" style="display:none;">
+      <div id="t_permissionsSection" style="display:none;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;margin-top:4px;">Access Permissions</div>
+        <div id="t_permissionsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px;">
+          <label class="perm-item" data-perm="teach">
+            <input type="checkbox" name="t_perm" value="teach" style="accent-color:var(--rc-blue);">
+            <span class="perm-icon">📚</span>
+            <div><div class="perm-label">Teaching</div><div class="perm-desc">Attendance &amp; progress</div></div>
+          </label>
+          <label class="perm-item" data-perm="fees">
+            <input type="checkbox" name="t_perm" value="fees" style="accent-color:var(--rc-green);">
+            <span class="perm-icon">💰</span>
+            <div><div class="perm-label">Fee Collection</div><div class="perm-desc">Collect &amp; view fees</div></div>
+          </label>
+          <label class="perm-item" data-perm="students">
+            <input type="checkbox" name="t_perm" value="students" style="accent-color:var(--rc-orange);">
+            <span class="perm-icon">🎓</span>
+            <div><div class="perm-label">Manage Students</div><div class="perm-desc">Add/edit/remove students</div></div>
+          </label>
+          <label class="perm-item" data-perm="members">
+            <input type="checkbox" name="t_perm" value="members" style="accent-color:var(--rc-red);">
+            <span class="perm-icon">👥</span>
+            <div><div class="perm-label">Manage Members</div><div class="perm-desc">Add/edit members</div></div>
+          </label>
+          <label class="perm-item" data-perm="reports">
+            <input type="checkbox" name="t_perm" value="reports" style="accent-color:#7c3aed;">
+            <span class="perm-icon">📊</span>
+            <div><div class="perm-label">Reports</div><div class="perm-desc">View all reports</div></div>
+          </label>
+          <label class="perm-item" data-perm="admin">
+            <input type="checkbox" name="t_perm" value="admin" style="accent-color:var(--rc-red);">
+            <span class="perm-icon">👑</span>
+            <div><div class="perm-label">Full Admin</div><div class="perm-desc">All permissions</div></div>
+          </label>
+        </div>
+        <div style="font-size:10px;color:var(--dim);margin-top:4px;">Only master admin can grant Full Admin access.</div>
       </div>
       <button class="btn btn-ghost" onclick="closeModal('modalTrainer')">Cancel</button>
       <button class="btn btn-primary" id="trainerSaveBtn" onclick="saveTrainer()">Add Trainer</button>
@@ -1232,8 +1265,8 @@ const DEFAULT_SETTINGS = {
   primaryColor: "#2563eb",
   accentColor:  "#d4a017",
   currency:     "Rs.",
-  trainerLabel: "Trainer",
-  trainersLabel:"Trainers",
+  trainerLabel: "Member",
+  trainersLabel:"Members",
   studentLabel: "Student",
   studentsLabel:"Students",
   classesPerFee: 4,
@@ -1880,7 +1913,7 @@ function buildLoginFields(){
   } else {
     const names=trainers.map(t=>t.username).join(" · ");
     f.innerHTML=`
-      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="trainer username"></div>
+      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="member username"></div>
       ${pwdField("loginPass")}
       <button class="login-btn login-btn-trainer" id="loginSubmitBtn">Sign in as Trainer →</button>`;
     document.getElementById("loginHint").innerHTML="Trainer accounts: "+names;
@@ -1915,8 +1948,9 @@ function doLogin(){
   } else {
     const t=trainers.find(x=>x.username===user&&x.password===pass);
     if(t){
-      const role=t.isAdmin?"admin":"trainer";
-      currentUser={role,trainerId:t.id,trainerName:t.name};
+      const perms=t.permissions||(t.isAdmin?["admin"]:["teach"]);
+      const role=perms.includes("admin")?"admin":"member";
+      currentUser={role,trainerId:t.id,trainerName:t.name,permissions:perms};
       saveSession();launchApp();
     }
     else{
@@ -2039,16 +2073,25 @@ function buildSidebar(){
       </div>`;
   } else {
     const t=getTrainer(currentUser.trainerId);
+    const perms=currentUser.permissions||(t?.permissions)||["teach"];
+    const has=p=>perms.includes("admin")||perms.includes(p);
+    const permLabels={"teach":"Teaching","fees":"Fee Collection","students":"Manage Students","members":"Manage Members","reports":"Reports","admin":"Full Admin"};
+    const myPermsText=perms.map(p=>permLabels[p]||p).join(", ");
     sidebar.innerHTML=`
-      <div class="sidebar-label" style="color:${t?.color||"#60a5fa"}44;">Trainer</div>
+      <div class="sidebar-label" style="color:${t?.color||"#60a5fa"}44;">${T()}</div>
       <div class="nav-item" id="nav-trainer-dashboard" onclick="showPage('trainer-dashboard')"><span class="nav-icon" style="color:var(--accent);">◼</span><span>Dashboard</span></div>
+      ${has("teach")?`
       <div class="nav-item" id="nav-trainer-attendance" onclick="showPage('trainer-attendance')"><span class="nav-icon" style="color:var(--rc-orange);">◼</span><span>Attendance</span></div>
       <div class="nav-item" id="nav-trainer-students" onclick="showPage('trainer-students')"><span class="nav-icon" style="color:var(--rc-green);">◼</span><span>My Students</span></div>
-      <div class="nav-item" id="nav-trainer-schedule" onclick="showPage('trainer-schedule')"><span class="nav-icon" style="color:#7c3aed;">◼</span><span>All Schedules</span></div>
-      <div class="nav-item" id="nav-trainer-progress" onclick="showPage('trainer-progress')"><span class="nav-icon" style="color:#2563eb;">◼</span><span>Progress</span></div>
-      <div style="margin-top:24px;padding:14px 12px;background:var(--surface2);border-radius:8px;border:1px solid ${t?.color||"#60a5fa"}33;font-size:11px;">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:8px;">Your Role</div>
-        <div style="color:var(--muted);line-height:1.7;">✓ Mark attendance<br>✓ Update progress<br>👁 View student info<br>🔒 Fees & settings → Admin only</div>
+      <div class="nav-item" id="nav-trainer-schedule" onclick="showPage('trainer-schedule')"><span class="nav-icon" style="color:#7c3aed;">◼</span><span>Schedule</span></div>
+      <div class="nav-item" id="nav-trainer-progress" onclick="showPage('trainer-progress')"><span class="nav-icon" style="color:#2563eb;">◼</span><span>Progress</span></div>`:""}
+      ${has("fees")?`<div class="nav-item" id="nav-admin-fees" onclick="showPage('admin-fees')"><span class="nav-icon" style="color:var(--rc-red);">◼</span><span>Fees</span></div>`:""}
+      ${has("students")?`<div class="nav-item" id="nav-admin-students" onclick="showPage('admin-students')"><span class="nav-icon" style="color:var(--rc-green);">◼</span><span>Students</span></div>`:""}
+      ${has("members")?`<div class="nav-item" id="nav-admin-trainers" onclick="showPage('admin-trainers')"><span class="nav-icon" style="color:var(--rc-blue);">◼</span><span>${Ts()}</span></div>`:""}
+      ${has("reports")?`<div class="nav-item" id="nav-admin-reports" onclick="showPage('admin-reports')"><span class="nav-icon" style="color:var(--muted);">◼</span><span>Reports</span></div>`:""}
+      <div style="margin-top:24px;padding:12px;background:var(--surface2);border-radius:8px;border:1px solid ${t?.color||"#60a5fa"}33;font-size:11px;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:6px;">Your Access</div>
+        <div style="color:var(--muted);line-height:1.8;font-size:11px;">${myPermsText}</div>
       </div>`;
   }
   setTimeout(applyInstSettings, 0);
@@ -2088,46 +2131,58 @@ function buildMobileNav(){
         Progress
       </button>`;
   } else {
-    const t=getTrainer(currentUser.trainerId);
-    const c=t?.color||"var(--rc-blue)";
-    nav.innerHTML=`
+    const mPerms=currentUser.permissions||["teach"];
+    const mHas=p=>mPerms.includes("admin")||mPerms.includes(p);
+    const feesDueM=students.some(s=>getFeeStatus(s.id).pendingCycles>0);
+    let mItems=`
       <button class="mnav-item" id="mnav-trainer-dashboard" onclick="showPage('trainer-dashboard')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Dashboard
-      </button>
+      </button>`;
+    if(mHas("teach")) mItems+=`
       <button class="mnav-item" id="mnav-trainer-attendance" onclick="showPage('trainer-attendance')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         Attend
       </button>
       <button class="mnav-item" id="mnav-trainer-students" onclick="showPage('trainer-students')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Students
-      </button>
-      <button class="mnav-item" id="mnav-trainer-schedule" onclick="showPage('trainer-schedule')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Schedule
       </button>
       <button class="mnav-item" id="mnav-trainer-progress" onclick="showPage('trainer-progress')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Progress
       </button>`;
+    if(mHas("fees")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-fees" onclick="showPage('admin-fees')" style="position:relative;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Fees${feesDueM?'<span class="mnav-dot"></span>':""}
+      </button>`;
+    if(mHas("students")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-students" onclick="showPage('admin-students')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Students
+      </button>`;
+    if(mHas("members")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-trainers" onclick="showPage('admin-trainers')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Members
+      </button>`;
+    nav.innerHTML=mItems;
   }
 }
 
 // ══ NAVIGATION ═════════════════════════════════════════════════════════════════
 function showPage(name){
   // Role guard — trainer cannot access admin pages, parent cannot access either
-  const adminPages=["admin-dashboard","admin-trainers","admin-students","admin-attendance",
-    "admin-fees","admin-schedule","admin-reports","admin-progress"];
-  const trainerPages=["trainer-dashboard","trainer-attendance","trainer-students","trainer-schedule","trainer-progress"];
   const role=currentUser?.role;
-  if(role==="trainer" && adminPages.includes(name)){
-    console.warn("CubeTrack: access denied —",name,"is admin-only");
-    name="trainer-dashboard"; // redirect to their own dashboard
-  }
-  if(role==="parent"){
-    console.warn("CubeTrack: access denied — parents use the portal");
-    return;
+  if(role==="parent"){ console.warn("CubeTrack: parents use portal"); return; }
+  // Permission-based page guard for members
+  if(role==="member"){
+    const allowed=getMemberPages();
+    if(!allowed.includes(name)){
+      console.warn("CubeTrack: no permission for",name);
+      name="trainer-dashboard";
+    }
   }
 
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
@@ -2616,6 +2671,60 @@ function closeTrainerProgressDetail(){
 }
 
 
+
+// ── Permission system ──────────────────────────────────────────────────────────
+// A member's permissions array drives what they can see and do.
+// 'admin' permission = full access to everything.
+
+function hasPerm(perm){
+  if(!currentUser) return false;
+  if(currentUser.role==="admin" && !currentUser.trainerId) return true; // master admin
+  const member = trainers.find(t=>t.id===currentUser.trainerId);
+  if(!member) return false;
+  const perms = member.permissions || (member.isAdmin ? ["admin"] : ["teach"]);
+  return perms.includes("admin") || perms.includes(perm);
+}
+
+function getMemberPerms(memberId){
+  const m = trainers.find(t=>t.id===memberId);
+  if(!m) return [];
+  if(m.isAdmin) return ["admin"];
+  return m.permissions || ["teach"];
+}
+
+function setMemberPerms(memberId, perms){
+  trainers = trainers.map(t=>t.id===memberId ? {...t, permissions:perms, isAdmin:perms.includes("admin")} : t);
+}
+
+// Derive sidebar pages from permissions
+function getMemberPages(){
+  if(hasPerm("admin")) return "admin";
+  const pages=["trainer-dashboard"]; // always have dashboard
+  if(hasPerm("teach"))    pages.push("trainer-attendance","trainer-students","trainer-schedule","trainer-progress");
+  if(hasPerm("fees"))     pages.push("admin-fees");
+  if(hasPerm("students")) pages.push("admin-students");
+  if(hasPerm("members"))  pages.push("admin-trainers");
+  if(hasPerm("reports"))  pages.push("admin-reports");
+  return pages;
+}
+
+// Open/close permissions section in modal
+function setPermissionsUI(perms){
+  const section=document.getElementById("t_permissionsSection");
+  if(section) section.style.display=isMasterAdmin()||hasPerm("members")?"":"none";
+  document.querySelectorAll("[name='t_perm']").forEach(cb=>{
+    cb.checked=perms.includes("admin")||perms.includes(cb.value);
+    // Only master admin can grant 'admin' or 'members' permissions
+    if((cb.value==="admin"||cb.value==="members") && !isMasterAdmin())
+      cb.disabled=true;
+  });
+}
+
+function getPermissionsFromUI(){
+  const checked=[...document.querySelectorAll("[name='t_perm']:checked")].map(c=>c.value);
+  return checked;
+}
+
 // ── Master admin & admin-trainer helpers ──────────────────────────────────────
 function isMasterAdmin(){
   // Only the original "admin" account (no trainerId) can grant/revoke admin rights
@@ -2782,7 +2891,17 @@ function renderTrainers(){
     return`<div class="trainer-card" style="--tc:${t.color}">
       <div class="trainer-card-head">
         <div class="trainer-avatar-lg" style="background:${t.color}22;color:${t.color};">${initials(t.name)}</div>
-        <div><div class="trainer-name">${t.name}</div><div class="trainer-meta">${t.spec||"Trainer"}</div><div class="trainer-meta" style="margin-top:2px;">@${t.username}</div></div>
+        <div>
+          <div class="trainer-name">${t.name}
+            ${(()=>{const ps=t.permissions||(t.isAdmin?["admin"]:[]);
+              if(ps.includes("admin")) return '<span class="perm-badge" style="background:rgba(230,57,70,.12);color:var(--rc-red);border:1px solid rgba(230,57,70,.25);">ADMIN</span>';
+              const icons={"teach":"📚","fees":"💰","students":"🎓","members":"👥","reports":"📊"};
+              return ps.map(p=>icons[p]?`<span title="${p}" style="font-size:11px;">${icons[p]}</span>`:"").join("");
+            })()}
+          </div>
+          <div class="trainer-meta">${t.spec||"Member"}</div>
+          <div class="trainer-meta" style="margin-top:2px;">@${t.username}</div>
+        </div>
       </div>
       <div class="trainer-stats">
         <div class="trainer-stat"><div class="trainer-stat-val" style="color:${t.color};">${tStu.length}</div><div class="trainer-stat-lbl" id="tStatStu">Students</div></div>
@@ -3144,15 +3263,14 @@ function openAddTrainer(){
   document.getElementById("trainerModalTitle").textContent="Add "+T();
   document.getElementById("trainerSaveBtn").textContent="Add "+T();
   ["t_name","t_username","t_password","t_spec","t_phone"].forEach(id=>document.getElementById(id).value="");
-  setAdminSlider(false);
-  const row=document.getElementById("t_adminToggleRow");
-  if(row) row.style.display=currentUser?.role==="admin"?"":"none";
+  setPermissionsUI(["teach"]); // default: teaching only
   openModal("modalTrainer");
 }
 function openEditTrainer(id){
   const t=trainers.find(x=>x.id===id);if(!t)return;
   editTrainerId=id;document.getElementById("trainerModalTitle").textContent="Edit "+T();document.getElementById("trainerSaveBtn").textContent="Save Changes";
   document.getElementById("t_name").value=t.name;document.getElementById("t_username").value=t.username;document.getElementById("t_password").value="";document.getElementById("t_password").placeholder="Leave blank to keep current password";document.getElementById("t_spec").value=t.spec||"";document.getElementById("t_phone").value=t.phone||"";
+  setPermissionsUI(getMemberPerms(editTrainerId));
   openModal("modalTrainer");
 }
 let _saving=false;
@@ -3169,8 +3287,10 @@ function _saveTrainer(){
   if(trainers.some(t=>t.username===user&&t.id!==editTrainerId)){showToast("Username already exists","error");return;}
   const tphone=document.getElementById("t_phone").value.trim();
   if(editTrainerId){
-    const grantAdmin=isMasterAdmin()&&!!document.getElementById("t_isAdmin")?.checked;
-    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass||t.password,spec:document.getElementById("t_spec").value.trim(),phone:tphone,isAdmin:grantAdmin}:t);
+    const newPerms=getPermissionsFromUI();
+    // Only master admin can grant admin/members permissions — strip them otherwise
+    const filteredPerms=isMasterAdmin()?newPerms:newPerms.filter(p=>p!=="admin"&&p!=="members");
+    trainers=trainers.map(t=>t.id===editTrainerId?{...t,name,username:user,password:pass||t.password,spec:document.getElementById("t_spec").value.trim(),phone:tphone,permissions:filteredPerms,isAdmin:filteredPerms.includes("admin")}:t);
     showToast(`${name} updated!`,"success");
   } else {
     const id=Date.now();
@@ -3372,7 +3492,7 @@ function _doAddManualPayment(sid,cycle,amount,date,mode,note){
 
 // ══ FEE HISTORY MODAL ══════════════════════════════════════════════════════════
 function openFeeHistory(sid){
-  if(currentUser?.role!=="admin"){showToast("Fee history is admin only","error");return;}
+  if(!hasPerm("fees")&&!hasPerm("admin")){showToast("You don't have fee access","error");return;}
   payStudentId=sid;
   renderFeeHistory();
   openModal("modalPay");
@@ -3535,7 +3655,7 @@ function deletePayment(pid,sid){ deletePaymentByKey(sid+"_0"); }
 
 // ══ PAY MODAL ══════════════════════════════════════════════════════════════════
 function openPayModal(sid){
-  if(currentUser?.role!=="admin"){showToast("Fee collection is admin only","error");return;}
+  if(!hasPerm("fees")&&!hasPerm("admin")){showToast("You don't have fee collection access","error");return;}
   payStudentId=sid;renderPayModal();openModal("modalPay");
 }
 function renderPayModal(){
@@ -4711,7 +4831,7 @@ async function init(){
       currentUser = savedSession;
     } else if(savedSession.trainerId){
       const t=trainers.find(x=>x.id===savedSession.trainerId);
-      if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"trainer"}; sessionValid=true; }
+      if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"member",permissions:t.permissions||(t.isAdmin?["admin"]:["teach"])}; sessionValid=true; }
     } else if(savedSession.role==="parent"){
       const s = students.find(x=>x.id===savedSession.studentId);
       if(s){ currentUser=savedSession; sessionValid=true; }
@@ -4744,4 +4864,42 @@ init();
 </div>
 
 </body>
-</html>
+</html  } else {
+    const mPerms=currentUser.permissions||["teach"];
+    const mHas=p=>mPerms.includes("admin")||mPerms.includes(p);
+    const feesDueM=students.some(s=>getFeeStatus(s.id).pendingCycles>0);
+    let mItems=`
+      <button class="mnav-item" id="mnav-trainer-dashboard" onclick="showPage('trainer-dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>`;
+    if(mHas("teach")) mItems+=`
+      <button class="mnav-item" id="mnav-trainer-attendance" onclick="showPage('trainer-attendance')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Attend
+      </button>
+      <button class="mnav-item" id="mnav-trainer-students" onclick="showPage('trainer-students')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Students
+      </button>
+      <button class="mnav-item" id="mnav-trainer-progress" onclick="showPage('trainer-progress')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Progress
+      </button>`;
+    if(mHas("fees")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-fees" onclick="showPage('admin-fees')" style="position:relative;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Fees${feesDueM?'<span class="mnav-dot"></span>':""}
+      </button>`;
+    if(mHas("students")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-students" onclick="showPage('admin-students')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Students
+      </button>`;
+    if(mHas("members")) mItems+=`
+      <button class="mnav-item" id="mnav-admin-trainers" onclick="showPage('admin-trainers')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Members
+      </button>`;
+    nav.innerHTML=mItems;
+  }>
