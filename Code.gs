@@ -16,7 +16,7 @@ const DATA_CELL           = "A1";
 
 // ─── YOUR master registry URL (from MasterRegistry.gs deployment) ────────────
 // Set this once — same value goes in every customer's Code.gs
-const MASTER_REGISTRY_URL = "https://script.google.com/macros/s/YOUR_MASTER_REGISTRY_ID/exec";
+const MASTER_REGISTRY_URL = "https://script.google.com/macros/s/AKfycbxbzYGIFXv1jSMyaqoGGjHMgRvyvxQGP7KFvNjApUbP-4vL1fA3mCgXggIoMAUWz9-6/exec";
 
 // ── Entry points ──────────────────────────────────────────────────────────────
 function doGet(e) {
@@ -102,7 +102,7 @@ function handlePull() {
 // ── Licence check — calls master registry ─────────────────────────────────────
 function checkLicence() {
   if (!MASTER_REGISTRY_URL || MASTER_REGISTRY_URL.includes("YOUR_MASTER")) {
-    return { valid: true, plan: "unlimited", daysLeft: 9999 }; // not configured yet
+    return { valid: true, plan: "unlimited", daysLeft: 9999, features: ["attendance","fees","progress","whatsapp","reports","portal","members","pwa"] }; // not configured yet
   }
   try {
     const deployUrl = ScriptApp.getService().getUrl();
@@ -112,7 +112,7 @@ function checkLicence() {
     return JSON.parse(resp.getContentText());
   } catch (e) {
     // If master is unreachable, fail open (don't lock out customer)
-    return { valid: true, plan: "unknown", daysLeft: 9999, offline: true };
+    return { valid: true, plan: "unknown", daysLeft: 9999, offline: true, features: ["attendance","fees","progress","whatsapp","reports","portal","members","pwa"] };
   }
 }
 

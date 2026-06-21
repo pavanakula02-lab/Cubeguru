@@ -1355,6 +1355,13 @@ function getSyncBaseUrl(){
 async function pushToSheet(silent){
   const url = getSyncBaseUrl();
   if(!url){ if(!silent) showToast("No sync URL configured","warn"); return; }
+  // Block writes if licence is suspended/expired — data stays safe locally,
+  // it just won't sync until renewed. Pulls (reads) are never blocked.
+  if(isLicenceBlocked()){
+    if(!silent) showToast("Sync paused — subscription needs renewal. Your data is saved locally.","error");
+    setSyncState("err","Renewal needed");
+    return;
+  }
   setSyncState("syncing","Syncing…");
   const ts = new Date().toISOString();
   const payload = { action:"push", ts, trainers, students, attendance, feePayments, adminpwd:getAdminPassword(), puzzleTypes, studentProgress, instSettings };
@@ -1374,6 +1381,8 @@ async function pullFromSheet(silent){
   try {
     const r = await fetch(url+"?action=pull&_="+Date.now(),{method:"GET",redirect:"follow"});
     const j = JSON.parse(await r.text());
+    // Licence/feature enforcement — backend checks MasterRegistry on every pull
+    if(j.licence) handleLicenceResponse(j.licence);
     if(j.ok && j.data){
       const d=j.data, sheetTs=d.ts||"", localTs=getSyncTs()||"";
       if(sheetTs>localTs||silent===true||silent==="force"){
@@ -1985,6 +1994,7 @@ function launchApp(){
   buildHeader();
   buildSidebar();
   buildMobileNav();
+  applyFeatureGates();
   // Force password change if still using default password
   if(currentUser.role==="admin" && getAdminPassword()==="admin123"){
     showPage("admin-dashboard");
@@ -2672,6 +2682,84 @@ function closeTrainerProgressDetail(){
 
 
 
+
+// ── Feature flags (set by Super Admin per institute via MasterRegistry) ──────
+// _currentLicence.features comes from Code.gs → MasterRegistry on every pull.
+let _currentLicence = lsGet("ct_licence", null); // restore cached value immediately on load
+
+function hasFeature(feat){
+  if(isMasterAdmin()) return true; // master admin always has everything
+  if(!_currentLicence || !_currentLicence.features) return true; // no restrictions = all on
+  return _currentLicence.features.includes(feat);
+}
+
+function applyFeatureGates(){
+  // Hide nav items for features this institute's plan doesn't include.
+  // Safe to call repeatedly — re-run after every sidebar/mobile-nav rebuild.
+  const map = {
+    fees:     ["nav-admin-fees","mnav-admin-fees"],
+    progress: ["nav-admin-progress","nav-trainer-progress","mnav-trainer-progress"],
+    reports:  ["nav-admin-reports","mnav-admin-reports"],
+    members:  ["nav-admin-trainers","mnav-admin-trainers"],
+  };
+  Object.entries(map).forEach(([feat, ids])=>{
+    const enabled = hasFeature(feat);
+    ids.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.style.display = enabled ? "" : "none";
+    });
+  });
+}
+
+// ── Licence enforcement — backend checks MasterRegistry on every pull ────────
+function handleLicenceResponse(licence){
+  _currentLicence = licence;
+  lsSave("ct_licence", licence);
+  applyFeatureGates();
+
+  if(licence.status === "suspended"){
+    showLicenceBanner("🚫 This institute's access has been suspended. Contact support to reactivate.", "danger", true);
+    return;
+  }
+  if(licence.valid === false || licence.status === "expired" || (licence.daysLeft !== undefined && licence.daysLeft < 0)){
+    showLicenceBanner("⛔ Your subscription has expired. Your data is safe — contact support to renew.", "danger", true);
+    return;
+  }
+  if(licence.daysLeft !== undefined && licence.daysLeft <= 7 && licence.daysLeft >= 0){
+    showLicenceBanner("⏰ Subscription expires in "+licence.daysLeft+" day"+(licence.daysLeft===1?"":"s")+". Renew soon.", "warn", false);
+    return;
+  }
+  if(licence.studentsMax && students.length >= licence.studentsMax){
+    showLicenceBanner("📊 You've reached your plan limit of "+licence.studentsMax+" students. Upgrade to add more.", "warn", false);
+    return;
+  }
+  hideLicenceBanner();
+}
+
+function showLicenceBanner(msg, type, blocking){
+  let banner = document.getElementById("licenceBanner");
+  if(!banner){
+    banner = document.createElement("div");
+    banner.id = "licenceBanner";
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+  const colors = { danger: "#e63946", warn: "#f59e0b" };
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9997;background:"+colors[type]+";color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.15);";
+  banner.innerHTML = msg + (blocking ? "" : ` <button onclick="document.getElementById('licenceBanner').style.display='none'" style="background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:4px;padding:2px 10px;margin-left:10px;cursor:pointer;font-size:12px;">Dismiss</button>`);
+  banner.style.display = "block";
+  window._licenceBlocked = !!blocking;
+}
+
+function hideLicenceBanner(){
+  const banner = document.getElementById("licenceBanner");
+  if(banner) banner.style.display = "none";
+  window._licenceBlocked = false;
+}
+
+function isLicenceBlocked(){
+  return !!window._licenceBlocked;
+}
+
 // ── Permission system ──────────────────────────────────────────────────────────
 // A member's permissions array drives what they can see and do.
 // 'admin' permission = full access to everything.
@@ -2723,6 +2811,37 @@ function setPermissionsUI(perms){
 function getPermissionsFromUI(){
   const checked=[...document.querySelectorAll("[name='t_perm']:checked")].map(c=>c.value);
   return checked;
+}
+
+
+// ── Super Admin override ──────────────────────────────────────────────────────
+// When super admin opens the app via SuperAdmin.html "Access" button,
+// override the deploy URL with the selected institute's URL
+function checkSuperAdminOverride(){
+  const isOverride = localStorage.getItem("ct_sa_is_override");
+  if(!isOverride) return false;
+  const url  = localStorage.getItem("ct_sa_override_url");
+  const name = localStorage.getItem("ct_sa_override_name");
+  if(!url) return false;
+  // Use this institute's URL instead of hardcoded DEPLOY_URL
+  setSyncUrl(url);
+  // Show a banner so super admin knows which institute they're viewing
+  const banner = document.createElement("div");
+  banner.id = "saBanner";
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#7c3aed;color:#fff;text-align:center;padding:6px 16px;font-size:12px;font-family:monospace;display:flex;align-items:center;justify-content:center;gap:12px;";
+  banner.innerHTML = `👑 Super Admin — Viewing: <strong>${name}</strong> &nbsp;|&nbsp; <button onclick="exitSuperAdminOverride()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px;">✕ Exit</button>`;
+  document.body.prepend(banner);
+  // Offset page content so banner doesn't overlap header
+  const app = document.getElementById("appShell");
+  if(app) app.style.paddingTop = "30px";
+  return true;
+}
+function exitSuperAdminOverride(){
+  localStorage.removeItem("ct_sa_is_override");
+  localStorage.removeItem("ct_sa_override_url");
+  localStorage.removeItem("ct_sa_override_name");
+  clearSession();
+  window.location.reload();
 }
 
 // ── Master admin & admin-trainer helpers ──────────────────────────────────────
@@ -4773,10 +4892,13 @@ async function init(){
   syncThemeColor();
   registerServiceWorker();
   updateOnlineStatus();
+  // Check if super admin is accessing this institute via override
+  const isSAOverride = checkSuperAdminOverride();
 
-  // Always hardcode DEPLOY_URL — new devices, incognito, shared links all start with empty localStorage
+  // If super admin override is active, URL is already set by checkSuperAdminOverride()
+  // Otherwise use the hardcoded DEPLOY_URL
   const DEPLOY_URL="https://script.google.com/macros/s/AKfycbwl_tgQCqIPWDkCU_XWqecMpLfU5mgCpQ2EuQv_oaodPprgMZ2gyjCN8Sos9JxxaA4IMQ/exec";
-  setSyncUrl(DEPLOY_URL);
+  if(!isSAOverride) setSyncUrl(DEPLOY_URL);
 
   // Load cached data (empty on first visit to any device — that is expected)
   loadInst();
