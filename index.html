@@ -5252,42 +5252,4 @@ init();
 </div>
 
 </body>
-</html  } else {
-    const mPerms=currentUser.permissions||["teach"];
-    const mHas=p=>mPerms.includes("admin")||mPerms.includes(p);
-    const feesDueM=students.some(s=>getFeeStatus(s.id).pendingCycles>0);
-    let mItems=`
-      <button class="mnav-item" id="mnav-trainer-dashboard" onclick="showPage('trainer-dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </button>`;
-    if(mHas("teach")) mItems+=`
-      <button class="mnav-item" id="mnav-trainer-attendance" onclick="showPage('trainer-attendance')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        Attend
-      </button>
-      <button class="mnav-item" id="mnav-trainer-students" onclick="showPage('trainer-students')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        Students
-      </button>
-      <button class="mnav-item" id="mnav-trainer-progress" onclick="showPage('trainer-progress')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Progress
-      </button>`;
-    if(mHas("fees")) mItems+=`
-      <button class="mnav-item" id="mnav-admin-fees" onclick="showPage('admin-fees')" style="position:relative;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        Fees${feesDueM?'<span class="mnav-dot"></span>':""}
-      </button>`;
-    if(mHas("students")) mItems+=`
-      <button class="mnav-item" id="mnav-admin-students" onclick="showPage('admin-students')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Students
-      </button>`;
-    if(mHas("members")) mItems+=`
-      <button class="mnav-item" id="mnav-admin-trainers" onclick="showPage('admin-trainers')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Members
-      </button>`;
-    nav.innerHTML=mItems;
-  }>
+</html>
