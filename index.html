@@ -2254,6 +2254,7 @@ function doLogout(){
 function launchApp(){
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appShell").style.display="block";
+  const bugBtn=document.getElementById("bugReportBtn"); if(bugBtn) bugBtn.style.display="flex";
   // Reset date navigation to today on each login to avoid stale old dates
   adminAttDate=todayStr();
   trainerAttDate=todayStr();
@@ -4693,6 +4694,7 @@ function launchParentPortal(studentId){
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appShell").style.display="none";
   document.getElementById("parentPortal").style.display="block";
+  const bugBtn=document.getElementById("bugReportBtn"); if(bugBtn) bugBtn.style.display="none";
   renderParentPortal(studentId);
 }
 
@@ -4997,6 +4999,69 @@ async function retryDataLoad(){
 }
 
 
+
+// ══ BUG REPORT (testing week tool) ═══════════════════════════════════════════
+function shouldShowBugReportBtn(){
+  return currentUser && currentUser.role !== "parent";
+}
+function openBugReportModal(){
+  document.getElementById("bugDescription").value = "";
+  document.getElementById("bugSeverity").value = "major";
+  document.getElementById("bugPageCapture").textContent = currentPage || "login screen";
+  document.getElementById("bugRoleCapture").textContent = currentUser?.role || "not logged in";
+  document.getElementById("bugTimeCapture").textContent = new Date().toLocaleString("en-IN");
+  openModal("modalBugReport");
+}
+
+async function submitBugReport(){
+  const description = document.getElementById("bugDescription").value.trim();
+  if(!description){ showToast("Please describe what happened","error"); return; }
+  const severity = document.getElementById("bugSeverity").value;
+
+  const report = {
+    description,
+    severity,
+    page: currentPage || "login screen",
+    user_role: currentUser?.role || "not logged in",
+    user_name: currentUser?.trainerName || (currentUser?.role==="admin" ? "Admin" : ""),
+    institute_id: getInstituteId() || null,
+    browser_info: navigator.userAgent,
+    screen_size: window.innerWidth + "x" + window.innerHeight,
+    app_version: "EduTrack pilot v1",
+    created_at: new Date().toISOString()
+  };
+
+  try{
+    // Primary: save to Supabase bug_reports table
+    await supaFetch("bug_reports", {
+      method: "POST",
+      body: JSON.stringify(report)
+    });
+    showToast("Thanks! Issue reported ✓","success");
+    closeModal("modalBugReport");
+  } catch(e){
+    // Fallback: at minimum, keep it in localStorage so it's not lost
+    const localReports = lsGet("et_bug_reports_local", []);
+    localReports.push(report);
+    lsSave("et_bug_reports_local", localReports);
+    console.warn("Bug report saved locally only (Supabase failed):", e.message);
+    showToast("Saved locally — will sync when online","success");
+    closeModal("modalBugReport");
+  }
+}
+
+// Retry any locally-stuck bug reports whenever we're back online
+async function flushLocalBugReports(){
+  const localReports = lsGet("et_bug_reports_local", []);
+  if(!localReports.length) return;
+  const stillFailed = [];
+  for(const report of localReports){
+    try{ await supaFetch("bug_reports", { method:"POST", body: JSON.stringify(report) }); }
+    catch(e){ stillFailed.push(report); }
+  }
+  lsSave("et_bug_reports_local", stillFailed);
+}
+
 // ══ PWA ENGINE ═══════════════════════════════════════════════════════════════
 
 // ── Service Worker registration ───────────────────────────────────────────────
@@ -5087,6 +5152,7 @@ function updateOnlineStatus(){
   }
 }
 window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("online", flushLocalBugReports);
 window.addEventListener("offline", updateOnlineStatus);
 
 // ── Session persistence ───────────────────────────────────────────────────────
@@ -5248,6 +5314,40 @@ init();
   <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
     <div class="modal-title">📲 Fee Reminder Preview</div>
     <div id="feePreviewContent" style="max-height:70vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+
+<!-- ══ BUG REPORT BUTTON (testing week only) ══ -->
+<button id="bugReportBtn" onclick="openBugReportModal()" title="Report an issue"
+  style="display:none;position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;
+  background:#e63946;color:#fff;border:none;font-size:20px;cursor:pointer;z-index:9500;
+  box-shadow:0 4px 14px rgba(230,57,70,.4);align-items:center;justify-content:center;">
+  🐞
+</button>
+
+<div class="modal-overlay" id="modalBugReport" onclick="if(event.target===this)closeModal('modalBugReport')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
+    <div class="modal-title">🐞 Report an Issue</div>
+    <div class="form-group">
+      <label class="form-label">What went wrong?</label>
+      <textarea class="form-input" id="bugDescription" rows="4" placeholder="e.g. Fee amount showed wrong number when I clicked Collect"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">How bad is it?</label>
+      <select class="form-input" id="bugSeverity">
+        <option value="minor">Minor — annoying but I can work around it</option>
+        <option value="major" selected>Major — blocks me from doing something</option>
+        <option value="critical">Critical — data looks wrong or lost</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);background:var(--surface2);padding:10px;border-radius:8px;margin-bottom:12px;">
+      📋 Auto-captured: page <strong id="bugPageCapture"></strong>, role <strong id="bugRoleCapture"></strong>, time <strong id="bugTimeCapture"></strong>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalBugReport')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitBugReport()">Send Report</button>
+    </div>
   </div>
 </div>
 
