@@ -495,12 +495,33 @@ select.form-input option{background:var(--surface);}
 <!-- ══ LOGIN SCREEN ══ -->
 <div class="login-screen" id="loginScreen">
   <div class="login-bg"></div>
-  <div class="login-card">
+
+  <!-- ══ INSTITUTE CODE SCREEN (shown first, before any institute is selected) ══ -->
+  <div class="login-card" id="instituteCodeCard">
+    <div class="login-logo">
+      <div style="width:32px;height:32px;border-radius:8px;background:#e63946;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;color:#fff;">E</div>
+      <span>EduTrack</span>
+    </div>
+    <div class="login-tagline">Enter your Institute Code to continue</div>
+    <div class="login-field">
+      <label class="login-label">Institute Code</label>
+      <input class="login-input" id="instituteCodeInput" placeholder="e.g. CUBEGURU" style="text-transform:uppercase;letter-spacing:1px;font-weight:700;" autocomplete="off">
+    </div>
+    <div class="login-err" id="instituteCodeErr"></div>
+    <button class="login-btn login-btn-admin" id="instituteCodeBtn" onclick="resolveInstituteCode()" style="width:100%;margin-top:8px;">Continue →</button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;">Don't have a code? Ask your institute admin.</div>
+  </div>
+
+  <!-- ══ MAIN LOGIN SCREEN (shown after institute code is verified) ══ -->
+  <div class="login-card" id="mainLoginCard" style="display:none;">
     <div class="login-logo" id="loginLogo">
       <div id="loginLogoMark" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;"></div>
       <span id="loginLogoText">Institute</span>
     </div>
     <div class="login-tagline" id="loginTagline">Class Management System</div>
+    <div style="text-align:center;margin-bottom:8px;">
+      <button onclick="switchInstitute()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;">↺ Not your institute? Switch</button>
+    </div>
     <div class="login-role-tabs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
       <button class="login-role-tab admin-tab active" id="roleTabAdmin">🔐 Admin</button>
       <button class="login-role-tab trainer-tab" id="roleTabTrainer">👤 Member</button>
@@ -1439,6 +1460,9 @@ async function pushToSupabase(silent){
     const instituteId = await ensureSupabaseInstitute();
     setSyncState("syncing","Saving to cloud…");
 
+    // Live counters for the Super Admin dashboard
+    const totalRevenue = Object.values(feePayments).flat().reduce((sum,p)=>sum+Number(p.amount||0),0);
+
     // 1. Institute settings
     await supaFetch("institutes?id=eq."+instituteId, {
       method: "PATCH",
@@ -1450,7 +1474,9 @@ async function pushToSupabase(silent){
         accent_color: getInst("accentColor"), admin_password: getAdminPassword(),
         upi_id: getInst("upiId"), upi_name: getInst("upiName"),
         payment_link: getInst("paymentLink"), payment_note: getInst("paymentNote"),
-        setup_done: !!getInst("setupDone"), updated_at: new Date().toISOString()
+        setup_done: !!getInst("setupDone"), updated_at: new Date().toISOString(),
+        student_count: students.length, trainer_count: trainers.length,
+        total_revenue: totalRevenue
       })
     });
 
@@ -5076,6 +5102,76 @@ async function flushLocalBugReports(){
   lsSave("et_bug_reports_local", stillFailed);
 }
 
+
+// ══ MULTI-TENANT INSTITUTE RESOLUTION ════════════════════════════════════════
+// Single app, many institutes. The Institute Code typed at login determines
+// which institute's data gets loaded — looked up fresh from Supabase every time.
+
+async function resolveInstituteCode(){
+  const codeInput = document.getElementById("instituteCodeInput");
+  const errEl = document.getElementById("instituteCodeErr");
+  const btn = document.getElementById("instituteCodeBtn");
+  const code = codeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  errEl.style.display = "none";
+  if(!code){ errEl.textContent = "Please enter your institute code"; errEl.style.display = "block"; return; }
+
+  btn.textContent = "Checking…"; btn.disabled = true;
+
+  try{
+    const rows = await supaFetch("institutes?institute_code=eq." + code + "&select=*");
+    if(!rows || !rows.length){
+      errEl.textContent = "Institute code not found. Check with your admin.";
+      errEl.style.display = "block";
+      btn.textContent = "Continue →"; btn.disabled = false;
+      return;
+    }
+    const inst = rows[0];
+    setInstituteId(inst.id);
+    lsSave("et_institute_code", code); // remember for next visit
+
+    // Load this institute's full data before showing the login screen
+    showLoadingSplash();
+    await pullFromSupabase(true);
+    hideLoadingSplash();
+
+    document.getElementById("instituteCodeCard").style.display = "none";
+    document.getElementById("mainLoginCard").style.display = "block";
+    applyInstSettings();
+    initLoginTabs();
+    buildLoginFields();
+
+  } catch(e){
+    errEl.textContent = "Couldn't connect. Check your internet and try again.";
+    errEl.style.display = "block";
+  }
+  btn.textContent = "Continue →"; btn.disabled = false;
+}
+
+function switchInstitute(){
+  // Clear current institute selection, go back to code entry screen
+  setInstituteId(null);
+  lsSave("et_institute_code", "");
+  trainers = []; students = []; attendance = {}; feePayments = {};
+  document.getElementById("mainLoginCard").style.display = "none";
+  document.getElementById("instituteCodeCard").style.display = "block";
+  document.getElementById("instituteCodeInput").value = "";
+  document.getElementById("instituteCodeInput").focus();
+}
+
+// On page load — if we already know the institute code from a previous visit,
+// skip straight to loading it instead of asking again every single time.
+async function tryAutoResolveInstitute(){
+  const savedCode = lsGet("et_institute_code", "");
+  const savedId = getInstituteId();
+  if(savedCode && savedId){
+    // We already know which institute this device belongs to
+    document.getElementById("instituteCodeInput").value = savedCode;
+    return true; // caller will proceed straight to loading
+  }
+  return false;
+}
+
 // ══ PWA ENGINE ═══════════════════════════════════════════════════════════════
 
 // ── Service Worker registration ───────────────────────────────────────────────
@@ -5262,86 +5358,73 @@ async function init(){
   syncThemeColor();
   registerServiceWorker();
   updateOnlineStatus();
-  // Check if super admin is accessing this institute via override
-  const isSAOverride = checkSuperAdminOverride();
 
-  // If super admin override is active, URL is already set by checkSuperAdminOverride()
-  // Otherwise use the hardcoded DEPLOY_URL
-  const DEPLOY_URL="https://script.google.com/macros/s/AKfycbwl_tgQCqIPWDkCU_XWqecMpLfU5mgCpQ2EuQv_oaodPprgMZ2gyjCN8Sos9JxxaA4IMQ/exec";
-  if(!isSAOverride) setSyncUrl(DEPLOY_URL);
-
-  // Load cached data (empty on first visit to any device — that is expected)
   loadInst();
   loadProgress();
-  const saved=lsGet("ct6_trainers",null);
-  if(saved){
-    trainers=saved; students=lsGet("ct6_students",[]);
-    attendance=lsGet("ct6_att",{}); feePayments=lsGet("ct6_fees",{});
-    normalizeFeePayments();
-  } else {
-    trainers=[]; students=[]; attendance={}; feePayments={};
-  }
 
-  // Show branded loading splash FIRST — prevents "new institute" flash
-  showLoadingSplash();
+  // ── Multi-tenant resolution: do we already know which institute this device belongs to? ──
+  const savedInstituteId = getInstituteId();
+  const savedCode = lsGet("et_institute_code", "");
 
-  // Pull from sheet with retry (Apps Script cold-starts can be slow)
-  let pullOk=false;
-  for(let attempt=0; attempt<2; attempt++){
-    try{
-      pullOk=!!(await pullEverywhere(true));
-      if(pullOk) break;
-    } catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:",e.message); }
-    if(attempt===0) await new Promise(r=>setTimeout(r,2500)); // wait before retry
-  }
+  if(savedInstituteId && savedCode){
+    // Returning device — skip the code screen, load straight in
+    document.getElementById("instituteCodeCard").style.display = "none";
+    document.getElementById("mainLoginCard").style.display = "block";
 
-  hideLoadingSplash();
-
-  // Apply branding from sheet data (now loaded) — AFTER pull, not before
-  applyInstSettings();
-  initLoginTabs();
-  buildLoginFields(); // CRITICAL: build AFTER pull so trainer names and student rolls are ready
-
-  // Show setup wizard only on genuine first install (no data anywhere)
-  const hasRealData = trainers.length>0 || students.length>0 || getInst("setupDone");
-  if(!hasRealData){
-    saveAll();
-    setTimeout(()=>openSetupWizard(), 400);
-  }
-
-  // Show retry button if still no data after pull attempts
-  const retryBtn=document.getElementById("retryDataBtn");
-  if(retryBtn) retryBtn.style.display=(!trainers.length&&!students.length&&!getInst("setupDone"))?"inline-block":"none";
-
-  // Restore session — check savedSession AFTER pull so data is ready
-  const savedSession = loadSession();
-  if(savedSession && !currentUser){
-    // Validate session is still valid against current data
-    let sessionValid = false;
-    if(savedSession.role==="admin"){
-      sessionValid = true; // admin is always valid if creds are in localStorage
-      currentUser = savedSession;
-    } else if(savedSession.trainerId){
-      const t=trainers.find(x=>x.id===savedSession.trainerId);
-      if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"member",permissions:t.permissions||(t.isAdmin?["admin"]:["teach"])}; sessionValid=true; }
-    } else if(savedSession.role==="parent"){
-      const s = students.find(x=>x.id===savedSession.studentId);
-      if(s){ currentUser=savedSession; sessionValid=true; }
-    }
-    if(!sessionValid){ clearSession(); currentUser=null; }
-  }
-
-  setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
-
-  if(currentUser){
-    // Session restored — go straight to app, skip login screen
-    document.getElementById("loginScreen").style.display="none";
-    if(currentUser.role==="parent"){
-      launchParentPortal(currentUser.studentId);
+    const saved = lsGet("ct6_trainers", null);
+    if(saved){
+      trainers = saved; students = lsGet("ct6_students", []);
+      attendance = lsGet("ct6_att", {}); feePayments = lsGet("ct6_fees", {});
+      normalizeFeePayments();
     } else {
-      launchApp();
-      showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard"));
+      trainers = []; students = []; attendance = {}; feePayments = {};
     }
+
+    showLoadingSplash();
+    let pullOk = false;
+    for(let attempt=0; attempt<2; attempt++){
+      try{ pullOk = !!(await pullFromSupabase(true)); if(pullOk) break; }
+      catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:", e.message); }
+      if(attempt===0) await new Promise(r=>setTimeout(r,2500));
+    }
+    hideLoadingSplash();
+
+    applyInstSettings();
+    initLoginTabs();
+    buildLoginFields();
+
+    const retryBtn = document.getElementById("retryDataBtn");
+    if(retryBtn) retryBtn.style.display = (!trainers.length && !students.length) ? "inline-block" : "none";
+
+    // Restore session if one exists for this institute
+    const savedSession = loadSession();
+    if(savedSession && !currentUser){
+      let sessionValid = false;
+      if(savedSession.role==="admin" && !savedSession.trainerId){
+        sessionValid = true; currentUser = savedSession;
+      } else if(savedSession.trainerId){
+        const t = trainers.find(x=>x.id===savedSession.trainerId);
+        if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"member",permissions:t.permissions||(t.isAdmin?["admin"]:["teach"])}; sessionValid=true; }
+      } else if(savedSession.role==="parent"){
+        const s = students.find(x=>x.id===savedSession.studentId);
+        if(s){ currentUser=savedSession; sessionValid=true; }
+      }
+      if(!sessionValid){ clearSession(); currentUser=null; }
+    }
+
+    setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
+
+    if(currentUser){
+      document.getElementById("loginScreen").style.display="none";
+      if(currentUser.role==="parent") launchParentPortal(currentUser.studentId);
+      else { launchApp(); showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard")); }
+    }
+
+  } else {
+    // First time on this device — show the Institute Code entry screen
+    document.getElementById("instituteCodeCard").style.display = "block";
+    document.getElementById("mainLoginCard").style.display = "none";
+    document.getElementById("instituteCodeInput")?.focus();
   }
 }
 init();
