@@ -410,15 +410,15 @@ select.form-input option{background:var(--surface);}
 }
 
 /* ── PWA INSTALL BANNER ── */
-#pwaInstallBanner{
+#pwaInstallBanner, #pwaInstallBannerIOS{
   display:none;position:fixed;bottom:70px;left:12px;right:12px;
   background:var(--surface);border:1px solid var(--border);
   border-radius:14px;padding:14px 16px;z-index:500;
   box-shadow:0 4px 24px rgba(0,0,0,.12);
   animation:slideUp .3s ease;
 }
-@media(min-width:500px){#pwaInstallBanner{left:auto;right:24px;width:340px;}}
-#pwaInstallBanner.show{display:flex;align-items:center;gap:12px;}
+@media(min-width:500px){#pwaInstallBanner, #pwaInstallBannerIOS{left:auto;right:24px;width:340px;}}
+#pwaInstallBanner.show, #pwaInstallBannerIOS.show{display:flex;align-items:center;gap:12px;}
 .pwa-banner-icon{width:44px;height:44px;border-radius:10px;background:var(--rc-red);
   display:flex;align-items:center;justify-content:center;
   font-family:'Nunito',sans-serif;font-weight:900;font-size:20px;color:#fff;flex-shrink:0;}
@@ -462,7 +462,7 @@ select.form-input option{background:var(--surface);}
 </head>
 <body>
 
-<!-- ══ PWA INSTALL BANNER ══ -->
+<!-- ══ PWA INSTALL BANNER (Android/Chrome — has native install button) ══ -->
 <div id="pwaInstallBanner">
   <div class="pwa-banner-icon">C</div>
   <div class="pwa-banner-text">
@@ -475,8 +475,21 @@ select.form-input option{background:var(--surface);}
   </div>
 </div>
 
+<!-- ══ PWA INSTALL BANNER (iOS Safari — no native prompt, manual steps) ══ -->
+<div id="pwaInstallBannerIOS">
+  <div class="pwa-banner-icon">C</div>
+  <div class="pwa-banner-text">
+    <div class="pwa-banner-title">Install EduTrack</div>
+    <div class="pwa-banner-sub">Tap <strong>Share</strong> ⬆️ then <strong>"Add to Home Screen"</strong></div>
+  </div>
+  <div class="pwa-banner-actions">
+    <button class="pwa-dismiss-btn" onclick="pwaDismissIOS()">Got it</button>
+  </div>
+</div>
+
 <!-- ══ OFFLINE BANNER ══ -->
 <div id="offlineBanner">📵 You are offline — showing cached data</div>
+
 
 
 <!-- ══ LOGIN SCREEN ══ -->
@@ -2255,6 +2268,7 @@ function launchApp(){
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("appShell").style.display="block";
   const bugBtn=document.getElementById("bugReportBtn"); if(bugBtn) bugBtn.style.display="flex";
+  checkIOSInstallPrompt();
   // Reset date navigation to today on each login to avoid stale old dates
   adminAttDate=todayStr();
   trainerAttDate=todayStr();
@@ -5100,6 +5114,30 @@ async function registerServiceWorker(){
   } catch(e){
     console.log("EduTrack SW: skipped —",e.message);
   }
+}
+
+
+// ── iOS Safari install instructions (no native install prompt exists on iOS) ──
+function isIOSDevice(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function isInStandaloneMode(){
+  return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+}
+function checkIOSInstallPrompt(){
+  if(!isIOSDevice() || isInStandaloneMode()) return; // already installed or not iOS
+  const dismissed = lsGet("pwa_ios_dismissed_ts", 0);
+  const dayMs = 86400000;
+  if(Date.now() - dismissed > 3*dayMs){
+    setTimeout(()=>{
+      const banner = document.getElementById("pwaInstallBannerIOS");
+      if(banner) banner.classList.add("show");
+    }, 4000);
+  }
+}
+function pwaDismissIOS(){
+  document.getElementById("pwaInstallBannerIOS")?.classList.remove("show");
+  lsSave("pwa_ios_dismissed_ts", Date.now());
 }
 
 // ── Install prompt ────────────────────────────────────────────────────────────
