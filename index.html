@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>CubeTrack — Rubik's Class Manager</title>
+<title>EduTrack — Institute Manager</title>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e63946" id="themeColorMeta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="CubeTrack">
+<meta name="apple-mobile-web-app-title" content="EduTrack">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="Rubik's Cube class management — attendance, fees, progress">
+<meta name="description" content="EduTrack — attendance, fees, and progress management for any institute">
 
 <!-- Apple touch icons (inline SVG fallback icons generated as data URIs) -->
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%23e63946'/><text x='96' y='136' text-anchor='middle' font-size='100' font-family='Arial,sans-serif' font-weight='900' fill='white'>C</text></svg>">
@@ -466,7 +466,7 @@ select.form-input option{background:var(--surface);}
 <div id="pwaInstallBanner">
   <div class="pwa-banner-icon">C</div>
   <div class="pwa-banner-text">
-    <div class="pwa-banner-title">Install CubeTrack</div>
+    <div class="pwa-banner-title">Install EduTrack</div>
     <div class="pwa-banner-sub">Add to home screen for quick access</div>
   </div>
   <div class="pwa-banner-actions">
@@ -1341,15 +1341,281 @@ function getSyncTs(){ return lsGet(SYNC_TS_KEY, ""); }
 function setSyncTs(t){ lsSave(SYNC_TS_KEY, t); }
 
 function scheduleSyncPush(){
-  if(!getSyncUrl()) return;
   clearTimeout(_syncDebounce);
-  _pendingSync=true; _syncDebounce = setTimeout(()=>pushToSheet(true), 1500);
+  _pendingSync=true;
+  _syncDebounce = setTimeout(()=>pushEverywhere(true), 1500);
 }
 
 function getSyncBaseUrl(){
   const loc = window.location.href;
   if(loc.includes("script.google.com")) return loc.split("?")[0];
   return getSyncUrl();
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUPABASE SYNC — fast cloud database, runs ALONGSIDE Google Sheets (backup).
+// Save order: localStorage (instant) → Supabase (fast cloud) → Google Sheet (backup)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SUPABASE_URL      = "https://jvgarrlkhffclofmkmrp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Z2FycmxraGZmY2xvZm1rbXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMjA5MDAsImV4cCI6MjA5NzU5NjkwMH0.WoeKoveDHI2RyjWiT1eJZdjxwZOZFS-gh7hTumKHhVU";
+
+// The institute's row ID in the Supabase `institutes` table.
+// First run auto-creates this and saves it to localStorage — every device
+// after that uses the same institute_id so they all read/write the same data.
+function getInstituteId(){ return lsGet("et_institute_id", null); }
+function setInstituteId(id){ lsSave("et_institute_id", id); }
+
+// ── Low-level Supabase REST helper ────────────────────────────────────────────
+async function supaFetch(path, options={}){
+  const headers = {
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+    "Content-Type": "application/json",
+    ...(options.headers||{})
+  };
+  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, { ...options, headers });
+  if(!res.ok){
+    const errText = await res.text().catch(()=> "");
+    throw new Error("Supabase "+res.status+": "+errText.slice(0,200));
+  }
+  // 204 No Content (common on inserts without return=representation) has no body
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ── Ensure this institute exists in Supabase — create on first run ───────────
+async function ensureSupabaseInstitute(){
+  let id = getInstituteId();
+  if(id) return id;
+
+  // No institute_id saved yet — create one using current local settings
+  const row = await supaFetch("institutes", {
+    method: "POST",
+    headers: { "Prefer": "return=representation" },
+    body: JSON.stringify({
+      name: getInst("name") || "My Institute",
+      tagline: getInst("tagline") || "",
+      currency: getInst("currency") || "Rs.",
+      classes_per_fee: CLASSES_PER_FEE(),
+      trainer_label: getInst("trainerLabel") || "Member",
+      trainers_label: getInst("trainersLabel") || "Members",
+      student_label: getInst("studentLabel") || "Student",
+      students_label: getInst("studentsLabel") || "Students",
+      primary_color: getInst("primaryColor") || "#e63946",
+      accent_color: getInst("accentColor") || "#2563eb",
+      admin_password: getAdminPassword() || "admin123",
+      upi_id: getInst("upiId") || "",
+      upi_name: getInst("upiName") || "",
+      payment_link: getInst("paymentLink") || "",
+      payment_note: getInst("paymentNote") || "",
+      setup_done: !!getInst("setupDone")
+    })
+  });
+  id = row[0].id;
+  setInstituteId(id);
+  return id;
+}
+
+// ── PUSH: local state → Supabase ──────────────────────────────────────────────
+// Supabase is the fast primary store. We push the full current state using
+// upsert (insert-or-update) so re-running this is always safe.
+async function pushToSupabase(silent){
+  try{
+    const instituteId = await ensureSupabaseInstitute();
+    setSyncState("syncing","Saving to cloud…");
+
+    // 1. Institute settings
+    await supaFetch("institutes?id=eq."+instituteId, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: getInst("name"), tagline: getInst("tagline"), currency: getInst("currency"),
+        classes_per_fee: CLASSES_PER_FEE(), trainer_label: getInst("trainerLabel"),
+        trainers_label: getInst("trainersLabel"), student_label: getInst("studentLabel"),
+        students_label: getInst("studentsLabel"), primary_color: getInst("primaryColor"),
+        accent_color: getInst("accentColor"), admin_password: getAdminPassword(),
+        upi_id: getInst("upiId"), upi_name: getInst("upiName"),
+        payment_link: getInst("paymentLink"), payment_note: getInst("paymentNote"),
+        setup_done: !!getInst("setupDone"), updated_at: new Date().toISOString()
+      })
+    });
+
+    // 2. Members (trainers) — upsert by local id stored in a mapping
+    const memberIdMap = lsGet("et_member_id_map", {}); // localId -> supabaseId
+    for(const t of trainers){
+      const supaId = memberIdMap[t.id];
+      const memberRow = {
+        institute_id: instituteId, name: t.name, username: t.username,
+        password: t.password, spec: t.spec||"", phone: t.phone||"",
+        color: t.color||"#60a5fa", permissions: t.permissions||["teach"],
+        is_admin: !!t.isAdmin
+      };
+      if(supaId){
+        await supaFetch("members?id=eq."+supaId, { method:"PATCH", body: JSON.stringify(memberRow) });
+      } else {
+        const r = await supaFetch("members", { method:"POST", headers:{"Prefer":"return=representation"}, body: JSON.stringify(memberRow) });
+        memberIdMap[t.id] = r[0].id;
+      }
+    }
+    lsSave("et_member_id_map", memberIdMap);
+
+    // 3. Students — upsert similarly
+    const studentIdMap = lsGet("et_student_id_map", {});
+    for(const s of students){
+      const supaId = studentIdMap[s.id];
+      const trainerSupaId = s.trainerId ? memberIdMap[s.trainerId] : null;
+      const studentRow = {
+        institute_id: instituteId, name: s.name, roll: s.roll, phone: s.phone||"",
+        parent_name: s.parentName||"", parent_phone: s.parentPhone||"", fee: s.fee||0,
+        trainer_id: trainerSupaId, days: s.days||[], start_time: s.start||"09:00",
+        end_time: s.end||"10:00", color: s.color||"#e63946",
+        join_date: s.joinDate||null, status: s.status||"active", notes: s.notes||""
+      };
+      if(supaId){
+        await supaFetch("students?id=eq."+supaId, { method:"PATCH", body: JSON.stringify(studentRow) });
+      } else {
+        const r = await supaFetch("students", { method:"POST", headers:{"Prefer":"return=representation"}, body: JSON.stringify(studentRow) });
+        studentIdMap[s.id] = r[0].id;
+      }
+    }
+    lsSave("et_student_id_map", studentIdMap);
+
+    // 4. Attendance — delete + re-insert for simplicity (small dataset, safe)
+    const attRows = [];
+    Object.entries(attendance).forEach(([date, byStudent])=>{
+      Object.entries(byStudent).forEach(([localSid, status])=>{
+        const supaSid = studentIdMap[localSid];
+        if(supaSid) attRows.push({ institute_id: instituteId, student_id: supaSid, date, status });
+      });
+    });
+    if(attRows.length){
+      await supaFetch("attendance", {
+        method: "POST",
+        headers: { "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(attRows)
+      });
+    }
+
+    // 5. Fee payments — only push ones not yet synced (tracked by a local flag)
+    const feeIdMap = lsGet("et_fee_id_map", {});
+    for(const [localSid, payments] of Object.entries(feePayments)){
+      const supaSid = studentIdMap[localSid];
+      if(!supaSid) continue;
+      for(const p of payments){
+        const key = localSid+"_"+(p.id||p.cycle+"_"+p.date);
+        if(feeIdMap[key]) continue; // already pushed
+        const r = await supaFetch("fee_payments", {
+          method:"POST", headers:{"Prefer":"return=representation"},
+          body: JSON.stringify({
+            institute_id: instituteId, student_id: supaSid, cycle: Number(p.cycle),
+            amount: Number(p.amount), mode: p.mode||"Cash", date: p.date, note: p.note||""
+          })
+        });
+        feeIdMap[key] = r[0].id;
+      }
+    }
+    lsSave("et_fee_id_map", feeIdMap);
+
+    setSyncState("ok","Cloud synced "+fmtNow());
+    if(!silent) showToast("Saved to cloud ✓","success");
+    return true;
+  } catch(e){
+    console.warn("Supabase push failed:", e.message);
+    setSyncState("err","Cloud sync failed");
+    if(!silent) showToast("Cloud sync failed: "+e.message,"error");
+    return false;
+  }
+}
+
+// ── PULL: Supabase → local state ──────────────────────────────────────────────
+async function pullFromSupabase(silent){
+  try{
+    const instituteId = getInstituteId();
+    if(!instituteId) return false; // nothing in cloud yet, nothing to pull
+
+    setSyncState("syncing","Loading from cloud…");
+
+    const [inst] = await supaFetch("institutes?id=eq."+instituteId+"&select=*");
+    const membersRows  = await supaFetch("members?institute_id=eq."+instituteId+"&select=*");
+    const studentsRows = await supaFetch("students?institute_id=eq."+instituteId+"&select=*");
+    const attRows       = await supaFetch("attendance?institute_id=eq."+instituteId+"&select=*");
+    const feeRows        = await supaFetch("fee_payments?institute_id=eq."+instituteId+"&select=*");
+
+    if(!inst) return false;
+
+    // Rebuild local-style objects from Supabase rows.
+    // We keep using Supabase's own UUIDs as the local IDs going forward —
+    // simpler than maintaining two ID systems once cloud is the source of truth.
+    trainers = membersRows.map(m=>({
+      id: m.id, name: m.name, username: m.username, password: m.password,
+      spec: m.spec, phone: m.phone, color: m.color,
+      permissions: m.permissions||["teach"], isAdmin: m.is_admin
+    }));
+
+    students = studentsRows.map(s=>({
+      id: s.id, name: s.name, roll: s.roll, phone: s.phone,
+      parentName: s.parent_name, parentPhone: s.parent_phone, fee: s.fee,
+      trainerId: s.trainer_id, days: s.days||[], start: s.start_time, end: s.end_time,
+      color: s.color, joinDate: s.join_date, status: s.status, notes: s.notes
+    }));
+
+    attendance = {};
+    attRows.forEach(a=>{
+      if(!attendance[a.date]) attendance[a.date] = {};
+      attendance[a.date][a.student_id] = a.status;
+    });
+
+    feePayments = {};
+    feeRows.forEach(p=>{
+      if(!feePayments[p.student_id]) feePayments[p.student_id] = [];
+      feePayments[p.student_id].push({ id:p.id, cycle:p.cycle, amount:p.amount, mode:p.mode, date:p.date, note:p.note });
+    });
+
+    instSettings = {
+      ...DEFAULT_SETTINGS,
+      name: inst.name, tagline: inst.tagline, currency: inst.currency,
+      classesPerFee: inst.classes_per_fee, trainerLabel: inst.trainer_label,
+      trainersLabel: inst.trainers_label, studentLabel: inst.student_label,
+      studentsLabel: inst.students_label, primaryColor: inst.primary_color,
+      accentColor: inst.accent_color, upiId: inst.upi_id, upiName: inst.upi_name,
+      paymentLink: inst.payment_link, paymentNote: inst.payment_note,
+      setupDone: inst.setup_done
+    };
+    if(inst.admin_password) setAdminPassword(inst.admin_password);
+
+    saveInst(); applyInstSettings();
+    lsSave("ct6_trainers",trainers); lsSave("ct6_students",students);
+    lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
+
+    setSyncState("ok","Cloud loaded "+fmtNow());
+    if(!silent) showToast("Loaded from cloud ✓","success");
+    if(!currentUser) buildLoginFields();
+    return true;
+  } catch(e){
+    console.warn("Supabase pull failed:", e.message);
+    setSyncState("err","Cloud load failed");
+    if(!silent) showToast("Cloud load failed: "+e.message,"error");
+    return false;
+  }
+}
+
+// ── Combined sync: Supabase primary, Google Sheet as backup ──────────────────
+// This replaces direct calls — push goes to BOTH, pull tries Supabase first.
+async function pushEverywhere(silent){
+  const cloudOk = await pushToSupabase(silent);
+  await pushToSheet(true); // always silent backup push, never blocks on errors
+  return cloudOk;
+}
+
+async function pullEverywhere(silent){
+  const hasCloudData = !!getInstituteId();
+  if(hasCloudData){
+    const ok = await pullFromSupabase(silent);
+    if(ok) return true;
+  }
+  // Fall back to Google Sheet if Supabase has nothing yet or failed
+  return await pullFromSheet(silent);
 }
 
 async function pushToSheet(silent){
@@ -1981,7 +2247,7 @@ function doLogout(){
   initLoginTabs();
   buildLoginFields();
   // Pull fresh in background so next login has up-to-date trainer names & student rolls
-  pullFromSheet(true).then(()=>{ applyInstSettings(); buildLoginFields(); });
+  pullEverywhere(true).then(()=>{ applyInstSettings(); buildLoginFields(); });
 }
 
 // ══ LAUNCH APP ═════════════════════════════════════════════════════════════════
@@ -2185,12 +2451,12 @@ function buildMobileNav(){
 function showPage(name){
   // Role guard — trainer cannot access admin pages, parent cannot access either
   const role=currentUser?.role;
-  if(role==="parent"){ console.warn("CubeTrack: parents use portal"); return; }
+  if(role==="parent"){ console.warn("EduTrack: parents use portal"); return; }
   // Permission-based page guard for members
   if(role==="member"){
     const allowed=getMemberPages();
     if(!allowed.includes(name)){
-      console.warn("CubeTrack: no permission for",name);
+      console.warn("EduTrack: no permission for",name);
       name="trainer-dashboard";
     }
   }
@@ -2553,8 +2819,8 @@ function handlePWAShortcuts(){
 // ── Listen for background sync signal from SW ─────────────────────────────────
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("message", e => {
-    if(e.data?.type === "SYNC_NOW" && getSyncUrl()){
-      pushToSheet(true);
+    if(e.data?.type === "SYNC_NOW"){
+      pushEverywhere(true);
     }
   });
 }
@@ -4718,7 +4984,7 @@ async function retryDataLoad(){
   if(btn){ btn.textContent="↻ Loading…"; btn.disabled=true; }
   showLoadingSplash();
   let ok=false;
-  try{ ok=!!(await pullFromSheet(true)); } catch(e){}
+  try{ ok=!!(await pullEverywhere(true)); } catch(e){}
   hideLoadingSplash();
   applyInstSettings();
   buildLoginFields();
@@ -4746,17 +5012,17 @@ async function registerServiceWorker(){
   const isIframe = window.self !== window.top;
 
   if(!isRealHost || isIframe){
-    console.log("CubeTrack SW: skipped (not on production host)");
+    console.log("EduTrack SW: skipped (not on production host)");
     return;
   }
 
   try{
     // Probe that sw.js actually exists before registering — avoids 404 warnings
     const probe = await fetch("sw.js",{method:"HEAD"});
-    if(!probe.ok){ console.log("CubeTrack SW: sw.js not found, skipping"); return; }
+    if(!probe.ok){ console.log("EduTrack SW: sw.js not found, skipping"); return; }
 
     _swReg = await navigator.serviceWorker.register("sw.js",{scope:"./"});
-    console.log("CubeTrack SW registered:",_swReg.scope);
+    console.log("EduTrack SW registered:",_swReg.scope);
 
     _swReg.addEventListener("updatefound",()=>{
       const nw=_swReg.installing;
@@ -4767,7 +5033,7 @@ async function registerServiceWorker(){
       });
     });
   } catch(e){
-    console.log("CubeTrack SW: skipped —",e.message);
+    console.log("EduTrack SW: skipped —",e.message);
   }
 }
 
@@ -4790,7 +5056,7 @@ window.addEventListener("appinstalled",()=>{
   _deferredInstallPrompt=null;
   const banner=document.getElementById("pwaInstallBanner");
   if(banner) banner.classList.remove("show");
-  showToast("CubeTrack installed! Find it on your home screen 🎉","success");
+  showToast("EduTrack installed! Find it on your home screen 🎉","success");
   lsSave("pwa_installed",true);
 });
 async function pwaInstall(){
@@ -4799,7 +5065,7 @@ async function pwaInstall(){
   const result = await _deferredInstallPrompt.userChoice;
   _deferredInstallPrompt = null;
   document.getElementById("pwaInstallBanner")?.classList.remove("show");
-  if(result.outcome==="accepted") showToast("Installing CubeTrack…","success");
+  if(result.outcome==="accepted") showToast("Installing EduTrack…","success");
 }
 function pwaDismiss(){
   document.getElementById("pwaInstallBanner")?.classList.remove("show");
@@ -4813,7 +5079,7 @@ function updateOnlineStatus(){
   if(navigator.onLine){
     banner.classList.remove("show");
     // Back online — pull fresh data silently
-    if(getSyncUrl()) pullFromSheet(true).then(updated=>{
+    pullEverywhere(true).then(updated=>{
       if(updated) showToast("Back online — data refreshed ✓","success");
     });
   } else {
@@ -4853,7 +5119,7 @@ function startAutoRefresh(){
   stopAutoRefresh();
   _autoRefreshTimer = setInterval(async ()=>{
     if(document.hidden) return; // Don't pull when tab is in background
-    const updated = await pullFromSheet(true);
+    const updated = await pullEverywhere(true);
     if(updated && currentUser){
       refreshFeeViews();
       const renders={"admin-dashboard":renderAdminDashboard,"admin-trainers":renderTrainers,
@@ -4874,7 +5140,7 @@ function showLoadingSplash(){
   el.style.cssText="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;";
   el.innerHTML=`
     <div style="width:52px;height:52px;border-radius:14px;background:var(--rc-red);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:22px;color:#fff;">C</div>
-    <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:18px;color:var(--text);">CubeTrack</div>
+    <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:18px;color:var(--text);">EduTrack</div>
     <div style="width:220px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;">
       <div id="_loadBar" style="height:100%;width:0%;background:var(--rc-red);border-radius:4px;transition:width 2.5s ease;"></div>
     </div>
@@ -4919,7 +5185,7 @@ async function init(){
   let pullOk=false;
   for(let attempt=0; attempt<2; attempt++){
     try{
-      pullOk=!!(await pullFromSheet(true));
+      pullOk=!!(await pullEverywhere(true));
       if(pullOk) break;
     } catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:",e.message); }
     if(attempt===0) await new Promise(r=>setTimeout(r,2500)); // wait before retry
