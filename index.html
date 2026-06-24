@@ -1283,7 +1283,7 @@ select.form-input option{background:var(--surface);}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ══ CONSTANTS ══════════════════════════════════════════════════════════════════
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -1397,6 +1397,10 @@ const SUPABASE_URL      = "https://jvgarrlkhffclofmkmrp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Z2FycmxraGZmY2xvZm1rbXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMjA5MDAsImV4cCI6MjA5NzU5NjkwMH0.WoeKoveDHI2RyjWiT1eJZdjxwZOZFS-gh7hTumKHhVU";
 
 // Real Supabase Auth client — handles login sessions, tokens, refresh
+if(typeof supabase === "undefined"){
+  console.error("CRITICAL: Supabase JS library failed to load from CDN. Auth and database calls will not work.");
+  alert("Failed to load required library. Please check your internet connection and refresh the page.");
+}
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // The institute's row ID in the Supabase `institutes` table.
