@@ -1283,6 +1283,7 @@ select.form-input option{background:var(--surface);}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ══ CONSTANTS ══════════════════════════════════════════════════════════════════
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -1395,6 +1396,9 @@ function getSyncBaseUrl(){
 const SUPABASE_URL      = "https://jvgarrlkhffclofmkmrp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2Z2FycmxraGZmY2xvZm1rbXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMjA5MDAsImV4cCI6MjA5NzU5NjkwMH0.WoeKoveDHI2RyjWiT1eJZdjxwZOZFS-gh7hTumKHhVU";
 
+// Real Supabase Auth client — handles login sessions, tokens, refresh
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // The institute's row ID in the Supabase `institutes` table.
 // First run auto-creates this and saves it to localStorage — every device
 // after that uses the same institute_id so they all read/write the same data.
@@ -1403,9 +1407,18 @@ function setInstituteId(id){ lsSave("et_institute_id", id); }
 
 // ── Low-level Supabase REST helper ────────────────────────────────────────────
 async function supaFetch(path, options={}){
+  // Use real session token when logged in (needed for RLS to recognize the
+  // caller's institute). Before login (e.g. institute code lookup), the
+  // anon key alone is fine since that lookup is intentionally public.
+  let accessToken = SUPABASE_ANON_KEY;
+  try{
+    const { data } = await sb.auth.getSession();
+    if(data?.session?.access_token) accessToken = data.session.access_token;
+  } catch(e){ /* not logged in yet — anon key fallback above is fine */ }
+
   const headers = {
     "apikey": SUPABASE_ANON_KEY,
-    "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + accessToken,
     "Content-Type": "application/json",
     ...(options.headers||{})
   };
@@ -1556,6 +1569,53 @@ async function pushToSupabase(silent){
     }
     lsSave("et_fee_id_map", feeIdMap);
 
+    // 6. Puzzle Types — upsert by local id stored in a mapping
+    const puzzleIdMap = lsGet("et_puzzle_id_map", {});
+    for(const pt of puzzleTypes){
+      const supaId = puzzleIdMap[pt.id];
+      const puzzleRow = { institute_id: instituteId, name: pt.name, levels: pt.levels||[] };
+      if(supaId){
+        await supaFetch("puzzle_types?id=eq."+supaId, { method:"PATCH", body: JSON.stringify(puzzleRow) });
+      } else {
+        const r = await supaFetch("puzzle_types", { method:"POST", headers:{"Prefer":"return=representation"}, body: JSON.stringify(puzzleRow) });
+        puzzleIdMap[pt.id] = r[0].id;
+      }
+    }
+    // Remove puzzle types from Supabase that were deleted locally
+    const localPuzzleIds = new Set(puzzleTypes.map(pt=>pt.id));
+    for(const [localId, supaId] of Object.entries(puzzleIdMap)){
+      if(!localPuzzleIds.has(Number(localId)) && !localPuzzleIds.has(localId)){
+        try{ await supaFetch("puzzle_types?id=eq."+supaId, { method:"DELETE" }); }catch(e){}
+        delete puzzleIdMap[localId];
+      }
+    }
+    lsSave("et_puzzle_id_map", puzzleIdMap);
+
+    // 7. Student Progress — one row per student+puzzle+level
+    const progressRows = [];
+    Object.entries(studentProgress).forEach(([localSid, byPuzzle])=>{
+      const supaSid = studentIdMap[localSid];
+      if(!supaSid) return;
+      Object.entries(byPuzzle).forEach(([localPid, byLevel])=>{
+        const supaPid = puzzleIdMap[localPid];
+        if(!supaPid) return;
+        Object.entries(byLevel).forEach(([levelId, info])=>{
+          if(levelId.startsWith("_")) return; // skip internal fields like _notes
+          progressRows.push({
+            institute_id: instituteId, student_id: supaSid, puzzle_type_id: supaPid,
+            level_id: levelId, status: info?.status||"notstarted", date: info?.date||null
+          });
+        });
+      });
+    });
+    if(progressRows.length){
+      await supaFetch("student_progress", {
+        method: "POST",
+        headers: { "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(progressRows)
+      });
+    }
+
     setSyncState("ok","Cloud synced "+fmtNow());
     if(!silent) showToast("Saved to cloud ✓","success");
     return true;
@@ -1580,6 +1640,8 @@ async function pullFromSupabase(silent){
     const studentsRows = await supaFetch("students?institute_id=eq."+instituteId+"&select=*");
     const attRows       = await supaFetch("attendance?institute_id=eq."+instituteId+"&select=*");
     const feeRows        = await supaFetch("fee_payments?institute_id=eq."+instituteId+"&select=*");
+    const puzzleRows      = await supaFetch("puzzle_types?institute_id=eq."+instituteId+"&select=*");
+    const progressRows     = await supaFetch("student_progress?institute_id=eq."+instituteId+"&select=*");
 
     if(!inst) return false;
 
@@ -1611,6 +1673,25 @@ async function pullFromSupabase(silent){
       feePayments[p.student_id].push({ id:p.id, cycle:p.cycle, amount:p.amount, mode:p.mode, date:p.date, note:p.note });
     });
 
+    // Puzzle types — rebuild using Supabase UUIDs as the IDs going forward
+    puzzleTypes = puzzleRows.map(pt=>({ id: pt.id, name: pt.name, levels: pt.levels||[] }));
+    // Keep the id map in sync so future pushes update (not duplicate) these rows
+    const rebuiltPuzzleMap = {};
+    puzzleTypes.forEach(pt=>{ rebuiltPuzzleMap[pt.id] = pt.id; });
+    lsSave("et_puzzle_id_map", rebuiltPuzzleMap);
+
+    // Student progress — rebuild the nested {studentId: {puzzleId: {levelId: {...}}}} shape
+    studentProgress = {};
+    progressRows.forEach(pr=>{
+      if(!studentProgress[pr.student_id]) studentProgress[pr.student_id] = {};
+      if(!studentProgress[pr.student_id][pr.puzzle_type_id]) studentProgress[pr.student_id][pr.puzzle_type_id] = {};
+      studentProgress[pr.student_id][pr.puzzle_type_id][pr.level_id] = { status: pr.status, date: pr.date };
+    });
+    // Keep student id map in sync too (mirrors the puzzle map approach above)
+    const rebuiltStudentMap = {};
+    students.forEach(s=>{ rebuiltStudentMap[s.id] = s.id; });
+    lsSave("et_student_id_map", rebuiltStudentMap);
+
     instSettings = {
       ...DEFAULT_SETTINGS,
       name: inst.name, tagline: inst.tagline, currency: inst.currency,
@@ -1626,6 +1707,12 @@ async function pullFromSupabase(silent){
     saveInst(); applyInstSettings();
     lsSave("ct6_trainers",trainers); lsSave("ct6_students",students);
     lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
+    lsSave("ct_puzzles_"+instituteId,puzzleTypes); lsSave("ct_progress_"+instituteId,studentProgress);
+
+    // Keep member id map in sync too, same reasoning as student/puzzle maps above
+    const rebuiltMemberMap = {};
+    trainers.forEach(t=>{ rebuiltMemberMap[t.id] = t.id; });
+    lsSave("et_member_id_map", rebuiltMemberMap);
 
     setSyncState("ok","Cloud loaded "+fmtNow());
     if(!silent) showToast("Loaded from cloud ✓","success");
@@ -1700,8 +1787,9 @@ async function pullFromSheet(silent){
         saveInst();
         applyInstSettings();
       }
-        if(d.puzzleTypes&&d.puzzleTypes.length){ puzzleTypes=d.puzzleTypes; lsSave("ct_puzzles",puzzleTypes); }
-        if(d.studentProgress&&Object.keys(d.studentProgress).length){ studentProgress=d.studentProgress; lsSave("ct_progress",studentProgress); }
+        const _instId=getInstituteId();
+        if(d.puzzleTypes&&d.puzzleTypes.length){ puzzleTypes=d.puzzleTypes; if(_instId) lsSave("ct_puzzles_"+_instId,puzzleTypes); }
+        if(d.studentProgress&&Object.keys(d.studentProgress).length){ studentProgress=d.studentProgress; if(_instId) lsSave("ct_progress_"+_instId,studentProgress); }
         normalizeFeePayments();
         lsSave("ct6_trainers",trainers); lsSave("ct6_students",students);
         lsSave("ct6_att",attendance); lsSave("ct6_fees",feePayments);
@@ -2124,7 +2212,7 @@ function seedData(){
 function saveAll(){
   lsSave("ct6_trainers",trainers);lsSave("ct6_students",students);
   lsSave("ct6_att",attendance);lsSave("ct6_fees",feePayments);
-  lsSave("ct_puzzles",puzzleTypes);lsSave("ct_progress",studentProgress);
+  const _sId=getInstituteId(); if(_sId){ lsSave("ct_puzzles_"+_sId,puzzleTypes); lsSave("ct_progress_"+_sId,studentProgress); }
   scheduleSyncPush();
 }
 
@@ -2239,17 +2327,15 @@ function buildLoginFields(){
   const userEl=document.getElementById("loginUser");
   if(userEl) userEl.onkeydown=function(e){if(e.key==="Enter")doLogin();};
 }
-function doLogin(){
+async function doLogin(){
   const user=document.getElementById("loginUser").value.trim();
   const pass=document.getElementById("loginPass").value;
   const err=document.getElementById("loginErr");
+  const btn=document.getElementById("loginSubmitBtn");
   err.style.display="none";
-  if(loginRole==="admin"){
-    if(user===ADMIN_USERNAME&&pass===getAdminPassword()){
-      currentUser={role:"admin"};saveSession();launchApp();
-    } else {err.textContent="Invalid admin credentials";err.style.display="block";}
-  } else if(loginRole==="parent"){
-    // Roll number + parent phone
+
+  if(loginRole==="parent"){
+    // Parents don't use Supabase Auth — verified by roll number + phone only
     const phone=pass.replace(/[^0-9]/g,"");
     const s=students.find(x=>x.roll===user&&x.parentPhone&&x.parentPhone.replace(/[^0-9]/g,"")===phone);
     if(s){currentUser={role:"parent",studentId:s.id};saveSession();launchParentPortal(s.id);}
@@ -2259,20 +2345,42 @@ function doLogin(){
       else{ err.textContent="Phone number doesn't match. Use the number registered with admin."; }
       err.style.display="block";
     }
-  } else {
-    const t=trainers.find(x=>x.username===user&&x.password===pass);
-    if(t){
-      const perms=t.permissions||(t.isAdmin?["admin"]:["teach"]);
-      const role=perms.includes("admin")?"admin":"member";
-      currentUser={role,trainerId:t.id,trainerName:t.name,permissions:perms};
-      saveSession();launchApp();
+    return;
+  }
+
+  // Admin and Member both authenticate via real Supabase Auth now.
+  // Username maps to a synthetic email behind the scenes: username@<instituteId>.supabase.local
+  const instituteId = getInstituteId();
+  if(!instituteId){ err.textContent="No institute loaded. Please reload the page."; err.style.display="block"; return; }
+
+  const usernameToCheck = loginRole==="admin" ? "admin" : user;
+  const syntheticEmail = usernameToCheck + "@" + instituteId + ".supabase.local";
+
+  if(btn){ btn.textContent="Signing in…"; btn.disabled=true; }
+
+  try{
+    const { data, error } = await sb.auth.signInWithPassword({ email: syntheticEmail, password: pass });
+    if(error) throw error;
+
+    if(loginRole==="admin"){
+      currentUser = { role:"admin", authUserId: data.user.id };
+    } else {
+      // Look up this member's record to get their permissions
+      const t = trainers.find(x=>x.username===user);
+      if(!t){ throw new Error("Member record not found"); }
+      const perms = t.permissions || (t.isAdmin ? ["admin"] : ["teach"]);
+      const role = perms.includes("admin") ? "admin" : "member";
+      currentUser = { role, trainerId:t.id, trainerName:t.name, permissions:perms, authUserId: data.user.id };
     }
-    else{
-      if(!trainers.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
-      else if(!trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
-      else{ err.textContent="Wrong password. Try again or contact admin."; }
-      err.style.display="block";
-    }
+    saveSession();
+    launchApp();
+  } catch(e){
+    if(!trainers.length && loginRole!=="admin"){ err.textContent="Data not loaded yet — tap the retry button below."; }
+    else if(loginRole==="member" && !trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
+    else{ err.textContent="Incorrect password. Try again or contact admin."; }
+    err.style.display="block";
+  } finally {
+    if(btn){ btn.textContent="Sign In"; btn.disabled=false; }
   }
 }
 function doLogout(){
@@ -3850,7 +3958,7 @@ function deleteStudent(id){
     if(!Object.keys(attendance[date]).length) delete attendance[date];
   });
   delete studentProgress[id];
-  lsSave("ct_progress",studentProgress);
+  const _pId=getInstituteId(); if(_pId) lsSave("ct_progress_"+_pId,studentProgress);
   saveAll();
   renderAdminStudents();showToast(s.name+" removed","success");updateFeesDot();
 }
@@ -4337,13 +4445,24 @@ const STATUS_LABELS = { notstarted:"Not Started", inprogress:"In Progress", comp
 const STATUS_COLORS = { notstarted:"var(--dim)", inprogress:"var(--rc-orange)", completed:"var(--rc-green)" };
 
 function loadProgress(){
-  puzzleTypes    = lsGet("ct_puzzles", defaultPuzzles());
-  studentProgress = lsGet("ct_progress", {});
+  // Scope by institute so different institutes on the same browser never share data.
+  // (ct_puzzles/ct_progress were old shared keys — kept only as ultimate fallback.)
+  const instId = getInstituteId();
+  if(instId){
+    puzzleTypes = lsGet("ct_puzzles_"+instId, defaultPuzzles());
+    studentProgress = lsGet("ct_progress_"+instId, {});
+  } else {
+    puzzleTypes = defaultPuzzles();
+    studentProgress = {};
+  }
 }
 
 function saveProgressData(){
-  lsSave("ct_puzzles", puzzleTypes);
-  lsSave("ct_progress", studentProgress);
+  const instId = getInstituteId();
+  if(instId){
+    lsSave("ct_puzzles_"+instId, puzzleTypes);
+    lsSave("ct_progress_"+instId, studentProgress);
+  }
   scheduleSyncPush();
 }
 
