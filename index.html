@@ -522,19 +522,56 @@ select.form-input option{background:var(--surface);}
     <div style="text-align:center;margin-bottom:8px;">
       <button onclick="switchInstitute()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;">↺ Not your institute? Switch</button>
     </div>
-    <div class="login-role-tabs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
-      <button class="login-role-tab admin-tab active" id="roleTabAdmin">🔐 Admin</button>
-      <button class="login-role-tab trainer-tab" id="roleTabTrainer">👤 Member</button>
-      <button class="login-role-tab" id="roleTabPortal" style="color:var(--rc-green);">👨‍👩‍👧 Parent</button>
+
+    <div class="login-field">
+      <label class="login-label">Username</label>
+      <input class="login-input" id="loginUser" placeholder="Your username or roll number" autocomplete="username">
     </div>
-    <div id="loginFields">
-      <!-- filled by JS -->
+    <div class="login-field">
+      <label class="login-label">Password</label>
+      <input class="login-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <button class="login-btn login-btn-admin" id="loginSubmitBtn" style="width:100%;margin-top:8px;">Sign In →</button>
+
     <div class="login-err" id="loginErr"></div>
     <div class="login-hint" id="loginHint"></div>
+
+    <div style="text-align:center;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <button onclick="openParentSetup()" style="background:none;border:none;color:var(--rc-green);font-size:12px;cursor:pointer;text-decoration:underline;">👨‍👩‍👧 Parent? Set up your account for the first time</button>
+    </div>
+
   <div style="text-align:center;margin-top:14px;">
     <button onclick="retryDataLoad()" id="retryDataBtn" style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;padding:6px 14px;">↻ Retry loading data</button>
   </div>
+  </div>
+
+  <!-- ══ PARENT FIRST-TIME SETUP CARD ══ -->
+  <div class="login-card" id="parentSetupCard" style="display:none;">
+    <div class="login-logo">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--rc-green);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;color:#fff;">👨‍👩‍👧</div>
+      <span>Parent Account Setup</span>
+    </div>
+    <div class="login-tagline">First time here? Let's set up your password.</div>
+
+    <div class="login-field">
+      <label class="login-label">Student Roll Number</label>
+      <input class="login-input" id="parentSetupRoll" placeholder="e.g. 101" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Registered Phone Number</label>
+      <input class="login-input" id="parentSetupPhone" type="tel" placeholder="Phone number on file with admin" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Choose a Password</label>
+      <input class="login-input" id="parentSetupPassword" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+    </div>
+    <button class="login-btn" id="parentSetupBtn" onclick="submitParentSetup()" style="width:100%;margin-top:8px;background:var(--rc-green);color:#fff;">Set Up My Account →</button>
+    <div class="login-err" id="parentSetupErr"></div>
+    <div class="login-success" id="parentSetupSuccess" style="display:none;color:var(--rc-green);font-size:12px;text-align:center;margin-top:10px;"></div>
+
+    <div style="text-align:center;margin-top:16px;">
+      <button onclick="closeParentSetup()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">← Back to login</button>
+    </div>
   </div>
 </div>
 
@@ -1662,7 +1699,8 @@ async function pullFromSupabase(silent){
       id: s.id, name: s.name, roll: s.roll, phone: s.phone,
       parentName: s.parent_name, parentPhone: s.parent_phone, fee: s.fee,
       trainerId: s.trainer_id, days: s.days||[], start: s.start_time, end: s.end_time,
-      color: s.color, joinDate: s.join_date, status: s.status, notes: s.notes
+      color: s.color, joinDate: s.join_date, status: s.status, notes: s.notes,
+      parentUsername: s.parent_username, parentSetupDone: s.parent_setup_done
     }));
 
     attendance = {};
@@ -2294,43 +2332,73 @@ function switchLoginRole(role,btn){
   buildLoginFields();
 }
 function initLoginTabs(){
-  const ta=document.getElementById("roleTabAdmin");
-  const tt=document.getElementById("roleTabTrainer");
-  const tp=document.getElementById("roleTabPortal");
-  if(ta) ta.addEventListener("click",function(){switchLoginRole("admin",this);});
-  if(tt) tt.addEventListener("click",function(){switchLoginRole("trainer",this);});
-  if(tp) tp.addEventListener("click",function(){switchLoginRole("parent",this);});
+  // No-op now — unified login has no role tabs anymore. Kept as a stub so
+  // any leftover calls to this function elsewhere don't break.
 }
+
 function buildLoginFields(){
-  const f=document.getElementById("loginFields");
-  const pwdField=(id)=>`<div class="login-field"><label class="login-label">Password</label><input class="login-input" id="${id}" type="password" placeholder="••••••••"></div>`;
-  if(loginRole==="admin"){
-    f.innerHTML=`
-      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="admin" value="admin"></div>
-      ${pwdField("loginPass")}
-      <button class="login-btn login-btn-admin" id="loginSubmitBtn">Sign in as Admin →</button>`;
-    document.getElementById("loginHint").innerHTML="Username: admin &nbsp;&middot;&nbsp; Use the password you set";
-  } else if(loginRole==="parent"){
-    f.innerHTML=`
-      <div class="login-field"><label class="login-label">Student Roll Number</label><input class="login-input" id="loginUser" placeholder="e.g. 101"></div>
-      <div class="login-field"><label class="login-label">Your Phone Number</label><input class="login-input" id="loginPass" type="tel" placeholder="Registered parent phone"></div>
-      <button class="login-btn" id="loginSubmitBtn" style="background:var(--rc-green);color:#fff;width:100%;padding:13px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:700;font-family:Nunito,sans-serif;margin-top:8px;">View My Child’s Progress →</button>`;
-    document.getElementById("loginHint").innerHTML="Enter your child’s roll number + your registered phone";
-  } else {
-    const names=trainers.map(t=>t.username).join(" · ");
-    f.innerHTML=`
-      <div class="login-field"><label class="login-label">Username</label><input class="login-input" id="loginUser" placeholder="member username"></div>
-      ${pwdField("loginPass")}
-      <button class="login-btn login-btn-trainer" id="loginSubmitBtn">Sign in as Trainer →</button>`;
-    document.getElementById("loginHint").innerHTML="Trainer accounts: "+names;
-  }
+  // Unified login fields are static HTML now (see mainLoginCard) — just wire up events.
   const btn=document.getElementById("loginSubmitBtn");
   if(btn) btn.onclick=doLogin;
   const passEl=document.getElementById("loginPass");
   if(passEl) passEl.onkeydown=function(e){if(e.key==="Enter")doLogin();};
   const userEl=document.getElementById("loginUser");
   if(userEl) userEl.onkeydown=function(e){if(e.key==="Enter")doLogin();};
+  const hint=document.getElementById("loginHint");
+  if(hint) hint.innerHTML="";
 }
+
+// ── Parent first-time setup screen toggling ───────────────────────────────────
+function openParentSetup(){
+  document.getElementById("mainLoginCard").style.display="none";
+  document.getElementById("parentSetupCard").style.display="block";
+  document.getElementById("parentSetupErr").style.display="none";
+  document.getElementById("parentSetupSuccess").style.display="none";
+}
+function closeParentSetup(){
+  document.getElementById("parentSetupCard").style.display="none";
+  document.getElementById("mainLoginCard").style.display="block";
+}
+
+async function submitParentSetup(){
+  const roll = document.getElementById("parentSetupRoll").value.trim();
+  const phone = document.getElementById("parentSetupPhone").value.trim();
+  const newPassword = document.getElementById("parentSetupPassword").value;
+  const errEl = document.getElementById("parentSetupErr");
+  const successEl = document.getElementById("parentSetupSuccess");
+  const btn = document.getElementById("parentSetupBtn");
+
+  errEl.style.display="none"; successEl.style.display="none";
+  if(!roll || !phone || !newPassword){ errEl.textContent="Please fill in all fields"; errEl.style.display="block"; return; }
+  if(newPassword.length<6){ errEl.textContent="Password must be at least 6 characters"; errEl.style.display="block"; return; }
+
+  const instituteId = getInstituteId();
+  btn.textContent="Setting up…"; btn.disabled=true;
+
+  try{
+    const resp = await fetch(SUPABASE_URL+"/functions/v1/parent-setup", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ instituteId, rollOrUsername: roll, phone, newPassword })
+    });
+    const result = await resp.json();
+    if(!result.ok) throw new Error(result.error || "Setup failed");
+
+    successEl.textContent = "✓ Account ready! You can now log in with your roll number and the password you just set.";
+    successEl.style.display="block";
+    document.getElementById("parentSetupRoll").value="";
+    document.getElementById("parentSetupPhone").value="";
+    document.getElementById("parentSetupPassword").value="";
+    setTimeout(()=>{ closeParentSetup(); }, 2500);
+  } catch(e){
+    errEl.textContent = e.message;
+    errEl.style.display="block";
+  } finally {
+    btn.textContent="Set Up My Account →"; btn.disabled=false;
+  }
+}
+
+// ── Unified login: tries admin, then member, then parent — same username/password box ──
 async function doLogin(){
   const user=document.getElementById("loginUser").value.trim();
   const pass=document.getElementById("loginPass").value;
@@ -2338,53 +2406,57 @@ async function doLogin(){
   const btn=document.getElementById("loginSubmitBtn");
   err.style.display="none";
 
-  if(loginRole==="parent"){
-    // Parents don't use Supabase Auth — verified by roll number + phone only
-    const phone=pass.replace(/[^0-9]/g,"");
-    const s=students.find(x=>x.roll===user&&x.parentPhone&&x.parentPhone.replace(/[^0-9]/g,"")===phone);
-    if(s){currentUser={role:"parent",studentId:s.id};saveSession();launchParentPortal(s.id);}
-    else{
-      if(!students.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
-      else if(!students.some(x=>x.roll===user)){ err.textContent="Roll number "+user+" not found. Check with your admin."; }
-      else{ err.textContent="Phone number doesn't match. Use the number registered with admin."; }
-      err.style.display="block";
-    }
-    return;
-  }
-
-  // Admin and Member both authenticate via real Supabase Auth now.
-  // Username maps to a synthetic email behind the scenes: username@<instituteId>.supabase.local
   const instituteId = getInstituteId();
   if(!instituteId){ err.textContent="No institute loaded. Please reload the page."; err.style.display="block"; return; }
+  if(!user || !pass){ err.textContent="Please enter both username and password"; err.style.display="block"; return; }
 
-  const usernameToCheck = loginRole==="admin" ? "admin" : user;
-  const syntheticEmail = usernameToCheck + "@" + instituteId + ".supabase.local";
+  btn.textContent="Signing in…"; btn.disabled=true;
 
-  if(btn){ btn.textContent="Signing in…"; btn.disabled=true; }
+  // Build the same synthetic email pattern used for admin/member/parent —
+  // they all use the identical scheme now: username@<instituteId>.supabase.local
+  const syntheticEmail = user + "@" + instituteId + ".supabase.local";
 
   try{
     const { data, error } = await sb.auth.signInWithPassword({ email: syntheticEmail, password: pass });
     if(error) throw error;
 
-    if(loginRole==="admin"){
+    // Figure out WHO this is based on how their account is stored —
+    // check admin first, then member, then parent.
+    if(user === "admin"){
       currentUser = { role:"admin", authUserId: data.user.id };
-    } else {
-      // Look up this member's record to get their permissions
-      const t = trainers.find(x=>x.username===user);
-      if(!t){ throw new Error("Member record not found"); }
+      saveSession();
+      launchApp();
+      return;
+    }
+
+    const t = trainers.find(x=>x.username===user);
+    if(t){
       const perms = t.permissions || (t.isAdmin ? ["admin"] : ["teach"]);
       const role = perms.includes("admin") ? "admin" : "member";
       currentUser = { role, trainerId:t.id, trainerName:t.name, permissions:perms, authUserId: data.user.id };
+      saveSession();
+      launchApp();
+      return;
     }
-    saveSession();
-    launchApp();
+
+    const s = students.find(x=>x.parentUsername===user || x.roll===user);
+    if(s){
+      currentUser = { role:"parent", studentId:s.id, authUserId: data.user.id };
+      saveSession();
+      launchParentPortal(s.id);
+      return;
+    }
+
+    // Authenticated successfully but no matching record found locally —
+    // most likely data hasn't loaded yet.
+    throw new Error("Account verified but no matching record found. Try the retry button below.");
+
   } catch(e){
-    if(!trainers.length && loginRole!=="admin"){ err.textContent="Data not loaded yet — tap the retry button below."; }
-    else if(loginRole==="member" && !trainers.some(x=>x.username===user)){ err.textContent="Username '"+user+"' not found. Check with your admin."; }
-    else{ err.textContent="Incorrect password. Try again or contact admin."; }
+    if(!trainers.length && !students.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
+    else { err.textContent="Incorrect username or password."; }
     err.style.display="block";
   } finally {
-    if(btn){ btn.textContent="Sign In"; btn.disabled=false; }
+    btn.textContent="Sign In →"; btn.disabled=false;
   }
 }
 function doLogout(){
