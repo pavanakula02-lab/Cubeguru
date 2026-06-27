@@ -496,36 +496,17 @@ select.form-input option{background:var(--surface);}
 <div class="login-screen" id="loginScreen">
   <div class="login-bg"></div>
 
-  <!-- ══ INSTITUTE CODE SCREEN (shown first, before any institute is selected) ══ -->
-  <div class="login-card" id="instituteCodeCard">
+  <!-- ══ MAIN LOGIN SCREEN — single email/password box, role determined after login ══ -->
+  <div class="login-card" id="mainLoginCard">
     <div class="login-logo">
       <div style="width:32px;height:32px;border-radius:8px;background:#e63946;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;color:#fff;">E</div>
       <span>EduTrack</span>
     </div>
-    <div class="login-tagline">Enter your Institute Code to continue</div>
-    <div class="login-field">
-      <label class="login-label">Institute Code</label>
-      <input class="login-input" id="instituteCodeInput" placeholder="e.g. CUBEGURU" style="text-transform:uppercase;letter-spacing:1px;font-weight:700;" autocomplete="off">
-    </div>
-    <div class="login-err" id="instituteCodeErr"></div>
-    <button class="login-btn login-btn-admin" id="instituteCodeBtn" onclick="resolveInstituteCode()" style="width:100%;margin-top:8px;">Continue →</button>
-    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:14px;">Don't have a code? Ask your institute admin.</div>
-  </div>
-
-  <!-- ══ MAIN LOGIN SCREEN (shown after institute code is verified) ══ -->
-  <div class="login-card" id="mainLoginCard" style="display:none;">
-    <div class="login-logo" id="loginLogo">
-      <div id="loginLogoMark" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;"></div>
-      <span id="loginLogoText">Institute</span>
-    </div>
-    <div class="login-tagline" id="loginTagline">Class Management System</div>
-    <div style="text-align:center;margin-bottom:8px;">
-      <button onclick="switchInstitute()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;">↺ Not your institute? Switch</button>
-    </div>
+    <div class="login-tagline" id="loginTagline">Sign in to your account</div>
 
     <div class="login-field">
-      <label class="login-label">Username</label>
-      <input class="login-input" id="loginUser" placeholder="Your username or roll number" autocomplete="username">
+      <label class="login-label">Email</label>
+      <input class="login-input" id="loginUser" type="email" placeholder="you@example.com" autocomplete="username">
     </div>
     <div class="login-field">
       <label class="login-label">Password</label>
@@ -537,12 +518,42 @@ select.form-input option{background:var(--surface);}
     <div class="login-hint" id="loginHint"></div>
 
     <div style="text-align:center;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
-      <button onclick="openParentSetup()" style="background:none;border:none;color:var(--rc-green);font-size:12px;cursor:pointer;text-decoration:underline;">👨‍👩‍👧 Parent? Set up your account for the first time</button>
+      <button onclick="openSignupCard()" style="background:none;border:none;color:var(--rc-blue);font-size:12px;cursor:pointer;text-decoration:underline;margin-bottom:8px;display:block;width:100%;">✨ New institute? Start your free trial</button>
+      <button onclick="openParentSetup()" style="background:none;border:none;color:var(--rc-green);font-size:12px;cursor:pointer;text-decoration:underline;display:block;width:100%;">👨‍👩‍👧 Parent? Set up your account for the first time</button>
     </div>
 
   <div style="text-align:center;margin-top:14px;">
     <button onclick="retryDataLoad()" id="retryDataBtn" style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;padding:6px 14px;">↻ Retry loading data</button>
   </div>
+  </div>
+
+  <!-- ══ SIGNUP CARD — self-serve trial creation ══ -->
+  <div class="login-card" id="signupCard" style="display:none;">
+    <div class="login-logo">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--rc-blue);display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;color:#fff;">✨</div>
+      <span>Start Your Free Trial</span>
+    </div>
+    <div class="login-tagline">14 days free, up to 15 students. No card needed.</div>
+
+    <div class="login-field">
+      <label class="login-label">Institute Name</label>
+      <input class="login-input" id="signupInstituteName" placeholder="e.g. Speedy Cubers Academy" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Your Email</label>
+      <input class="login-input" id="signupEmail" type="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Choose a Password</label>
+      <input class="login-input" id="signupPassword" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+    </div>
+    <button class="login-btn login-btn-admin" id="signupBtn" onclick="submitSignup()" style="width:100%;margin-top:8px;">Create My Free Trial →</button>
+    <div class="login-err" id="signupErr"></div>
+    <div id="signupSuccess" style="display:none;color:var(--rc-green);font-size:12px;text-align:center;margin-top:10px;line-height:1.6;"></div>
+
+    <div style="text-align:center;margin-top:16px;">
+      <button onclick="closeSignupCard()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">← Back to login</button>
+    </div>
   </div>
 
   <!-- ══ PARENT FIRST-TIME SETUP CARD ══ -->
@@ -553,6 +564,10 @@ select.form-input option{background:var(--surface);}
     </div>
     <div class="login-tagline">First time here? Let's set up your password.</div>
 
+    <div class="login-field">
+      <label class="login-label">Institute Code</label>
+      <input class="login-input" id="parentSetupInstCode" placeholder="Ask your institute admin" style="text-transform:uppercase;" autocomplete="off">
+    </div>
     <div class="login-field">
       <label class="login-label">Student Roll Number</label>
       <input class="login-input" id="parentSetupRoll" placeholder="e.g. 101" autocomplete="off">
@@ -2349,6 +2364,55 @@ function buildLoginFields(){
 }
 
 // ── Parent first-time setup screen toggling ───────────────────────────────────
+// ── Signup card toggling ──────────────────────────────────────────────────────
+function openSignupCard(){
+  document.getElementById("mainLoginCard").style.display="none";
+  document.getElementById("signupCard").style.display="block";
+  document.getElementById("signupErr").style.display="none";
+  document.getElementById("signupSuccess").style.display="none";
+}
+function closeSignupCard(){
+  document.getElementById("signupCard").style.display="none";
+  document.getElementById("mainLoginCard").style.display="block";
+}
+
+async function submitSignup(){
+  const instituteName = document.getElementById("signupInstituteName").value.trim();
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const errEl = document.getElementById("signupErr");
+  const successEl = document.getElementById("signupSuccess");
+  const btn = document.getElementById("signupBtn");
+
+  errEl.style.display="none"; successEl.style.display="none";
+  if(!instituteName || !email || !password){ errEl.textContent="Please fill in all fields"; errEl.style.display="block"; return; }
+  if(password.length<6){ errEl.textContent="Password must be at least 6 characters"; errEl.style.display="block"; return; }
+
+  btn.textContent="Creating your trial…"; btn.disabled=true;
+
+  try{
+    const resp = await fetch(SUPABASE_URL+"/functions/v1/signup-trial", {
+      method:"POST",
+      headers:{"Content-Type":"application/json", "apikey":SUPABASE_ANON_KEY, "Authorization":"Bearer "+SUPABASE_ANON_KEY},
+      body: JSON.stringify({ instituteName, email, password })
+    });
+    const result = await resp.json();
+    if(!result.ok) throw new Error(result.error || "Signup failed");
+
+    successEl.innerHTML = "✓ Trial created! Check <strong>"+email+"</strong> for a verification link, then come back and sign in.";
+    successEl.style.display="block";
+    document.getElementById("signupInstituteName").value="";
+    document.getElementById("signupEmail").value="";
+    document.getElementById("signupPassword").value="";
+  } catch(e){
+    errEl.textContent = e.message;
+    errEl.style.display="block";
+  } finally {
+    btn.textContent="Create My Free Trial →"; btn.disabled=false;
+  }
+}
+
+// ── Parent first-time setup ────────────────────────────────────────────────────
 function openParentSetup(){
   document.getElementById("mainLoginCard").style.display="none";
   document.getElementById("parentSetupCard").style.display="block";
@@ -2361,6 +2425,7 @@ function closeParentSetup(){
 }
 
 async function submitParentSetup(){
+  const instCode = document.getElementById("parentSetupInstCode").value.trim().toUpperCase();
   const roll = document.getElementById("parentSetupRoll").value.trim();
   const phone = document.getElementById("parentSetupPhone").value.trim();
   const newPassword = document.getElementById("parentSetupPassword").value;
@@ -2369,16 +2434,20 @@ async function submitParentSetup(){
   const btn = document.getElementById("parentSetupBtn");
 
   errEl.style.display="none"; successEl.style.display="none";
-  if(!roll || !phone || !newPassword){ errEl.textContent="Please fill in all fields"; errEl.style.display="block"; return; }
+  if(!instCode || !roll || !phone || !newPassword){ errEl.textContent="Please fill in all fields"; errEl.style.display="block"; return; }
   if(newPassword.length<6){ errEl.textContent="Password must be at least 6 characters"; errEl.style.display="block"; return; }
 
-  const instituteId = getInstituteId();
   btn.textContent="Setting up…"; btn.disabled=true;
 
   try{
+    // Look up the institute by code first — parent setup happens before any data is loaded
+    const rows = await supaFetch("institutes?institute_code=eq."+instCode+"&select=id");
+    if(!rows || !rows.length) throw new Error("Institute code not found. Check with your admin.");
+    const instituteId = rows[0].id;
+
     const resp = await fetch(SUPABASE_URL+"/functions/v1/parent-setup", {
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers:{"Content-Type":"application/json", "apikey":SUPABASE_ANON_KEY, "Authorization":"Bearer "+SUPABASE_ANON_KEY},
       body: JSON.stringify({ instituteId, rollOrUsername: roll, phone, newPassword })
     });
     const result = await resp.json();
@@ -2386,6 +2455,7 @@ async function submitParentSetup(){
 
     successEl.textContent = "✓ Account ready! You can now log in with your roll number and the password you just set.";
     successEl.style.display="block";
+    document.getElementById("parentSetupInstCode").value="";
     document.getElementById("parentSetupRoll").value="";
     document.getElementById("parentSetupPhone").value="";
     document.getElementById("parentSetupPassword").value="";
@@ -2398,79 +2468,76 @@ async function submitParentSetup(){
   }
 }
 
-// ── Unified login: tries admin, then member, then parent — same username/password box ──
+// ── Unified login: email + password, role/institute determined via whoami() ───
 async function doLogin(){
-  const user=document.getElementById("loginUser").value.trim();
+  const email=document.getElementById("loginUser").value.trim();
   const pass=document.getElementById("loginPass").value;
   const err=document.getElementById("loginErr");
   const btn=document.getElementById("loginSubmitBtn");
   err.style.display="none";
 
-  const instituteId = getInstituteId();
-  if(!instituteId){ err.textContent="No institute loaded. Please reload the page."; err.style.display="block"; return; }
-  if(!user || !pass){ err.textContent="Please enter both username and password"; err.style.display="block"; return; }
+  if(!email || !pass){ err.textContent="Please enter both email and password"; err.style.display="block"; return; }
 
   btn.textContent="Signing in…"; btn.disabled=true;
 
-  // Build the same synthetic email pattern used for admin/member/parent —
-  // they all use the identical scheme now: username@<instituteId>.supabase.local
-  const syntheticEmail = user + "@" + instituteId + ".supabase.local";
-
   try{
-    const { data, error } = await sb.auth.signInWithPassword({ email: syntheticEmail, password: pass });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
     if(error) throw error;
 
-    // Figure out WHO this is based on how their account is stored —
-    // check admin first, then member, then parent.
-    if(user === "admin"){
-      currentUser = { role:"admin", authUserId: data.user.id };
-      saveSession();
-      launchApp();
-      return;
-    }
+    // Ask the database who this person is — admin, member, or parent —
+    // and which institute they belong to. This replaces needing an
+    // institute code typed in beforehand.
+    const { data: whoRows, error: whoErr } = await sb.rpc("whoami");
+    if(whoErr) throw whoErr;
+    const who = whoRows?.[0];
+    if(!who || !who.role){ throw new Error("Account not linked to any institute. Contact support."); }
 
-    const t = trainers.find(x=>x.username===user);
-    if(t){
-      const perms = t.permissions || (t.isAdmin ? ["admin"] : ["teach"]);
-      const role = perms.includes("admin") ? "admin" : "member";
-      currentUser = { role, trainerId:t.id, trainerName:t.name, permissions:perms, authUserId: data.user.id };
-      saveSession();
-      launchApp();
-      return;
-    }
+    // Now that we know the institute, load its data
+    setInstituteId(who.institute_id);
+    showLoadingSplash();
+    await pullFromSupabase(true);
+    hideLoadingSplash();
+    applyInstSettings();
 
-    const s = students.find(x=>x.parentUsername===user || x.roll===user);
-    if(s){
-      currentUser = { role:"parent", studentId:s.id, authUserId: data.user.id };
-      saveSession();
-      launchParentPortal(s.id);
-      return;
+    if(who.role==="admin"){
+      const t = who.member_id ? trainers.find(x=>x.id===who.member_id) : null;
+      currentUser = t
+        ? { role:"admin", trainerId:t.id, trainerName:t.name, permissions:t.permissions||["admin"], authUserId: data.user.id }
+        : { role:"admin", authUserId: data.user.id };
+      saveSession(); launchApp();
+    } else if(who.role==="member"){
+      const t = trainers.find(x=>x.id===who.member_id);
+      const perms = t?.permissions || ["teach"];
+      currentUser = { role:"member", trainerId:t?.id, trainerName:t?.name, permissions:perms, authUserId: data.user.id };
+      saveSession(); launchApp();
+    } else if(who.role==="parent"){
+      currentUser = { role:"parent", studentId: who.student_id, authUserId: data.user.id };
+      saveSession(); launchParentPortal(who.student_id);
+    } else {
+      throw new Error("Could not determine your role. Contact support.");
     }
-
-    // Authenticated successfully but no matching record found locally —
-    // most likely data hasn't loaded yet.
-    throw new Error("Account verified but no matching record found. Try the retry button below.");
 
   } catch(e){
-    if(!trainers.length && !students.length){ err.textContent="Data not loaded yet — tap the retry button below."; }
-    else { err.textContent="Incorrect username or password."; }
+    err.textContent = e.message?.includes("Invalid login") ? "Incorrect email or password." : (e.message || "Sign in failed.");
     err.style.display="block";
   } finally {
     btn.textContent="Sign In →"; btn.disabled=false;
   }
 }
-function doLogout(){
+async function doLogout(){
   stopAutoRefresh();
+  await sb.auth.signOut(); // clear the real Supabase session, not just our local one
   clearSession();
   currentUser=null;
+  setInstituteId(null);
+  trainers=[]; students=[]; attendance={}; feePayments={};
   document.getElementById("loginScreen").style.display="flex";
   document.getElementById("appShell").style.display="none";
   const pp=document.getElementById("parentPortal");
   if(pp) pp.style.display="none";
-  initLoginTabs();
-  buildLoginFields();
-  // Pull fresh in background so next login has up-to-date trainer names & student rolls
-  pullEverywhere(true).then(()=>{ applyInstSettings(); buildLoginFields(); });
+  document.getElementById("mainLoginCard").style.display="block";
+  document.getElementById("loginUser").value="";
+  document.getElementById("loginPass").value="";
 }
 
 // ══ LAUNCH APP ═════════════════════════════════════════════════════════════════
@@ -5298,75 +5365,6 @@ async function flushLocalBugReports(){
 }
 
 
-// ══ MULTI-TENANT INSTITUTE RESOLUTION ════════════════════════════════════════
-// Single app, many institutes. The Institute Code typed at login determines
-// which institute's data gets loaded — looked up fresh from Supabase every time.
-
-async function resolveInstituteCode(){
-  const codeInput = document.getElementById("instituteCodeInput");
-  const errEl = document.getElementById("instituteCodeErr");
-  const btn = document.getElementById("instituteCodeBtn");
-  const code = codeInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-  errEl.style.display = "none";
-  if(!code){ errEl.textContent = "Please enter your institute code"; errEl.style.display = "block"; return; }
-
-  btn.textContent = "Checking…"; btn.disabled = true;
-
-  try{
-    const rows = await supaFetch("institutes?institute_code=eq." + code + "&select=*");
-    if(!rows || !rows.length){
-      errEl.textContent = "Institute code not found. Check with your admin.";
-      errEl.style.display = "block";
-      btn.textContent = "Continue →"; btn.disabled = false;
-      return;
-    }
-    const inst = rows[0];
-    setInstituteId(inst.id);
-    lsSave("et_institute_code", code); // remember for next visit
-
-    // Load this institute's full data before showing the login screen
-    showLoadingSplash();
-    await pullFromSupabase(true);
-    hideLoadingSplash();
-
-    document.getElementById("instituteCodeCard").style.display = "none";
-    document.getElementById("mainLoginCard").style.display = "block";
-    applyInstSettings();
-    initLoginTabs();
-    buildLoginFields();
-
-  } catch(e){
-    errEl.textContent = "Couldn't connect. Check your internet and try again.";
-    errEl.style.display = "block";
-  }
-  btn.textContent = "Continue →"; btn.disabled = false;
-}
-
-function switchInstitute(){
-  // Clear current institute selection, go back to code entry screen
-  setInstituteId(null);
-  lsSave("et_institute_code", "");
-  trainers = []; students = []; attendance = {}; feePayments = {};
-  document.getElementById("mainLoginCard").style.display = "none";
-  document.getElementById("instituteCodeCard").style.display = "block";
-  document.getElementById("instituteCodeInput").value = "";
-  document.getElementById("instituteCodeInput").focus();
-}
-
-// On page load — if we already know the institute code from a previous visit,
-// skip straight to loading it instead of asking again every single time.
-async function tryAutoResolveInstitute(){
-  const savedCode = lsGet("et_institute_code", "");
-  const savedId = getInstituteId();
-  if(savedCode && savedId){
-    // We already know which institute this device belongs to
-    document.getElementById("instituteCodeInput").value = savedCode;
-    return true; // caller will proceed straight to loading
-  }
-  return false;
-}
-
 // ══ PWA ENGINE ═══════════════════════════════════════════════════════════════
 
 // ── Service Worker registration ───────────────────────────────────────────────
@@ -5557,70 +5555,71 @@ async function init(){
   loadInst();
   loadProgress();
 
-  // ── Multi-tenant resolution: do we already know which institute this device belongs to? ──
-  const savedInstituteId = getInstituteId();
-  const savedCode = lsGet("et_institute_code", "");
+  document.getElementById("mainLoginCard").style.display = "block";
 
-  if(savedInstituteId && savedCode){
-    // Returning device — skip the code screen, load straight in
-    document.getElementById("instituteCodeCard").style.display = "none";
-    document.getElementById("mainLoginCard").style.display = "block";
+  // ── Check for an existing real Supabase Auth session on this device ──────────
+  // Supabase Auth persists sessions itself — we don't need our own institute-
+  // code/localStorage juggling anymore. If there's a session, whoami() tells
+  // us everything: role, institute, member/student id.
+  let restoredSession = false;
+  try{
+    const { data: sessionData } = await sb.auth.getSession();
+    if(sessionData?.session){
+      showLoadingSplash();
 
-    const saved = lsGet("ct6_trainers", null);
-    if(saved){
-      trainers = saved; students = lsGet("ct6_students", []);
-      attendance = lsGet("ct6_att", {}); feePayments = lsGet("ct6_fees", {});
-      normalizeFeePayments();
-    } else {
-      trainers = []; students = []; attendance = {}; feePayments = {};
-    }
+      const { data: whoRows, error: whoErr } = await sb.rpc("whoami");
+      const who = whoRows?.[0];
 
-    showLoadingSplash();
-    let pullOk = false;
-    for(let attempt=0; attempt<2; attempt++){
-      try{ pullOk = !!(await pullFromSupabase(true)); if(pullOk) break; }
-      catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:", e.message); }
-      if(attempt===0) await new Promise(r=>setTimeout(r,2500));
-    }
-    hideLoadingSplash();
+      if(!whoErr && who && who.role){
+        setInstituteId(who.institute_id);
 
-    applyInstSettings();
-    initLoginTabs();
-    buildLoginFields();
+        const saved = lsGet("ct6_trainers", null);
+        if(saved){
+          trainers = saved; students = lsGet("ct6_students", []);
+          attendance = lsGet("ct6_att", {}); feePayments = lsGet("ct6_fees", {});
+          normalizeFeePayments();
+        }
 
-    const retryBtn = document.getElementById("retryDataBtn");
-    if(retryBtn) retryBtn.style.display = (!trainers.length && !students.length) ? "inline-block" : "none";
+        let pullOk = false;
+        for(let attempt=0; attempt<2; attempt++){
+          try{ pullOk = !!(await pullFromSupabase(true)); if(pullOk) break; }
+          catch(e){ console.warn("Pull attempt "+(attempt+1)+" failed:", e.message); }
+          if(attempt===0) await new Promise(r=>setTimeout(r,2500));
+        }
+        applyInstSettings();
 
-    // Restore session if one exists for this institute
-    const savedSession = loadSession();
-    if(savedSession && !currentUser){
-      let sessionValid = false;
-      if(savedSession.role==="admin" && !savedSession.trainerId){
-        sessionValid = true; currentUser = savedSession;
-      } else if(savedSession.trainerId){
-        const t = trainers.find(x=>x.id===savedSession.trainerId);
-        if(t){ currentUser={...savedSession,role:t.isAdmin?"admin":"member",permissions:t.permissions||(t.isAdmin?["admin"]:["teach"])}; sessionValid=true; }
-      } else if(savedSession.role==="parent"){
-        const s = students.find(x=>x.id===savedSession.studentId);
-        if(s){ currentUser=savedSession; sessionValid=true; }
+        if(who.role==="admin"){
+          const t = who.member_id ? trainers.find(x=>x.id===who.member_id) : null;
+          currentUser = t
+            ? { role:"admin", trainerId:t.id, trainerName:t.name, permissions:t.permissions||["admin"], authUserId: sessionData.session.user.id }
+            : { role:"admin", authUserId: sessionData.session.user.id };
+        } else if(who.role==="member"){
+          const t = trainers.find(x=>x.id===who.member_id);
+          currentUser = { role:"member", trainerId:t?.id, trainerName:t?.name, permissions:t?.permissions||["teach"], authUserId: sessionData.session.user.id };
+        } else if(who.role==="parent"){
+          currentUser = { role:"parent", studentId: who.student_id, authUserId: sessionData.session.user.id };
+        }
+
+        if(currentUser){
+          restoredSession = true;
+          document.getElementById("loginScreen").style.display="none";
+          if(currentUser.role==="parent") launchParentPortal(currentUser.studentId);
+          else { launchApp(); showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard")); }
+        }
       }
-      if(!sessionValid){ clearSession(); currentUser=null; }
+      hideLoadingSplash();
     }
-
-    setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
-
-    if(currentUser){
-      document.getElementById("loginScreen").style.display="none";
-      if(currentUser.role==="parent") launchParentPortal(currentUser.studentId);
-      else { launchApp(); showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard")); }
-    }
-
-  } else {
-    // First time on this device — show the Institute Code entry screen
-    document.getElementById("instituteCodeCard").style.display = "block";
-    document.getElementById("mainLoginCard").style.display = "none";
-    document.getElementById("instituteCodeInput")?.focus();
+  } catch(e){
+    console.warn("Session restore failed:", e.message);
+    hideLoadingSplash();
   }
+
+  if(!restoredSession){
+    // No valid session — show the plain login screen, nothing to load yet
+    document.getElementById("loginUser")?.focus();
+  }
+
+  setTimeout(()=>{ setSyncState("ok","Ready"); }, 100);
 }
 init();
 </script>
