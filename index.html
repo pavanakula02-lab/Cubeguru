@@ -5670,6 +5670,10 @@ async function init(){
     hideLoadingSplash();
   }
 
+  // Always wire up the login button/fields, regardless of session state —
+  // this must run even on a fresh page load with no prior session.
+  buildLoginFields();
+
   if(!restoredSession){
     // No valid session — show the plain login screen, nothing to load yet
     document.getElementById("loginUser")?.focus();
