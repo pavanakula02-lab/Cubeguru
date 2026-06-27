@@ -588,6 +588,20 @@ select.form-input option{background:var(--surface);}
       <button onclick="closeParentSetup()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">← Back to login</button>
     </div>
   </div>
+
+  <!-- ══ SUPER ADMIN CHOICE CARD ══ -->
+  <div class="login-card" id="superAdminChoiceCard" style="display:none;">
+    <div class="login-logo">
+      <div style="width:32px;height:32px;border-radius:8px;background:#1a1d2e;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;flex-shrink:0;color:#fff;">👑</div>
+      <span>Welcome, Super Admin</span>
+    </div>
+    <div class="login-tagline">Where would you like to go?</div>
+    <button class="login-btn login-btn-admin" onclick="window.location.href='SuperAdmin.html'" style="width:100%;margin-top:12px;">📊 Open Super Admin Dashboard</button>
+    <button class="login-btn" id="superAdminEnterInstBtn" onclick="enterAsInstituteAdmin()" style="width:100%;margin-top:10px;background:var(--rc-blue);color:#fff;display:none;">🏫 Enter as Institute Admin</button>
+    <div style="text-align:center;margin-top:16px;">
+      <button onclick="doLogout()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">Sign out</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══ PARENT PORTAL ══ -->
@@ -2469,6 +2483,33 @@ async function submitParentSetup(){
 }
 
 // ── Unified login: email + password, role/institute determined via whoami() ───
+// ── Super admin login chooser ──────────────────────────────────────────────────
+let _pendingSuperAdminInstituteId = null;
+function showSuperAdminChoice(linkedInstituteId){
+  document.getElementById("mainLoginCard").style.display="none";
+  document.getElementById("superAdminChoiceCard").style.display="block";
+  const enterBtn = document.getElementById("superAdminEnterInstBtn");
+  if(linkedInstituteId){
+    _pendingSuperAdminInstituteId = linkedInstituteId;
+    enterBtn.style.display="block";
+  } else {
+    enterBtn.style.display="none";
+  }
+}
+
+async function enterAsInstituteAdmin(){
+  if(!_pendingSuperAdminInstituteId) return;
+  setInstituteId(_pendingSuperAdminInstituteId);
+  showLoadingSplash();
+  await pullFromSupabase(true);
+  hideLoadingSplash();
+  applyInstSettings();
+  const { data: sessionData } = await sb.auth.getSession();
+  currentUser = { role:"admin", authUserId: sessionData?.session?.user?.id };
+  saveSession();
+  launchApp();
+}
+
 async function doLogin(){
   const email=document.getElementById("loginUser").value.trim();
   const pass=document.getElementById("loginPass").value;
@@ -2491,6 +2532,14 @@ async function doLogin(){
     if(whoErr) throw whoErr;
     const who = whoRows?.[0];
     if(!who || !who.role){ throw new Error("Account not linked to any institute. Contact support."); }
+
+    if(who.role==="super_admin"){
+      // You're the platform owner — show a chooser instead of loading any
+      // single institute's data automatically.
+      hideLoadingSplash();
+      showSuperAdminChoice(who.institute_id);
+      return;
+    }
 
     // Now that we know the institute, load its data
     setInstituteId(who.institute_id);
@@ -5571,6 +5620,12 @@ async function init(){
       const who = whoRows?.[0];
 
       if(!whoErr && who && who.role){
+        if(who.role==="super_admin"){
+          hideLoadingSplash();
+          document.getElementById("loginScreen").style.display="flex";
+          showSuperAdminChoice(who.institute_id);
+          restoredSession = true;
+        } else {
         setInstituteId(who.institute_id);
 
         const saved = lsGet("ct6_trainers", null);
@@ -5605,6 +5660,7 @@ async function init(){
           document.getElementById("loginScreen").style.display="none";
           if(currentUser.role==="parent") launchParentPortal(currentUser.studentId);
           else { launchApp(); showPage(currentPage||(currentUser.role==="admin"?"admin-dashboard":"trainer-dashboard")); }
+        }
         }
       }
       hideLoadingSplash();
