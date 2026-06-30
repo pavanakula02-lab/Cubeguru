@@ -458,6 +458,20 @@ select.form-input option{background:var(--surface);}
 .perm-desc{font-size:10px;color:var(--muted);}
 .perm-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace;vertical-align:middle;margin-left:4px;}
 
+
+/* ══ SUPER ADMIN DASHBOARD STYLES (scoped under .sa-scope) ══ */
+
+:root{
+  --sa-bg:#0f1117;--sa-surface:#1a1d2e;--sa-surface2:#22263a;
+  --sa-border:#2a2f45;--sa-border2:#363c55;
+  --sa-text:#e8eaf0;--sa-muted:#8892a4;--sa-dim:#555e75;
+  --sa-green:#4ade80;--sa-red:#f87171;--sa-orange:#f59e4a;
+  --sa-blue:#60a5fa;--sa-purple:#a78bfa;--sa-accent:#e63946;
+}.sa-scope a{color:var(--sa-blue);text-decoration:none;}.sa-scope a:hover{text-decoration:underline;}.sa-scope #sa-authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}.sa-scope .sa-auth-card{background:var(--sa-surface);border:1px solid var(--sa-border);border-radius:16px;padding:40px;width:100%;max-width:420px;text-align:center;}.sa-scope .sa-auth-logo{font-size:44px;margin-bottom:12px;}.sa-scope .sa-auth-title{font-size:22px;font-weight:700;margin-bottom:4px;}.sa-scope .sa-auth-sub{color:var(--sa-muted);font-size:13px;margin-bottom:28px;}.sa-scope .sa-auth-label{display:block;text-align:left;font-size:11px;color:var(--sa-muted);margin-bottom:4px;margin-top:14px;text-transform:uppercase;letter-spacing:.5px;}.sa-scope .sa-auth-input{width:100%;padding:11px 14px;background:var(--sa-surface2);border:1px solid var(--sa-border);border-radius:8px;color:var(--sa-text);font-size:14px;outline:none;}.sa-scope .sa-auth-input:focus{border-color:var(--sa-accent);}.sa-scope .sa-auth-btn{width:100%;padding:12px;background:var(--sa-accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:20px;transition:opacity .15s;}.sa-scope .sa-auth-btn:hover{opacity:.9;}.sa-scope .sa-auth-err{color:var(--sa-red);font-size:12px;margin-top:10px;min-height:18px;}.sa-scope #sa-app{display:none;}.sa-scope .sa-topbar{background:var(--sa-surface);border-bottom:1px solid var(--sa-border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}.sa-scope .sa-topbar-left{display:flex;align-items:center;gap:14px;}.sa-scope .sa-logo-mark{width:34px;height:34px;border-radius:8px;background:var(--sa-accent);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;}.sa-scope .sa-logo-text{font-weight:700;font-size:17px;}.sa-scope .sa-logo-badge{font-size:10px;background:rgba(230,57,70,.15);color:var(--sa-accent);border:1px solid rgba(230,57,70,.3);border-radius:4px;padding:2px 7px;font-weight:600;letter-spacing:.5px;}.sa-scope .sa-topbar-right{display:flex;gap:8px;align-items:center;}.sa-scope .sa-topbar-info{font-size:11px;color:var(--sa-dim);font-family:monospace;}.sa-scope .sa-btn{padding:7px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:5px;}.sa-scope .sa-btn-ghost{background:var(--sa-surface2);color:var(--sa-text);border:1px solid var(--sa-border);}.sa-scope .sa-btn-ghost:hover{background:var(--sa-border);}.sa-scope .sa-btn-primary{background:var(--sa-accent);color:#fff;}.sa-scope .sa-btn-primary:hover{opacity:.9;}.sa-scope .sa-btn-green{background:rgba(74,222,128,.15);color:var(--sa-green);border:1px solid rgba(74,222,128,.3);}.sa-scope .sa-btn-orange{background:rgba(245,158,11,.12);color:var(--sa-orange);border:1px solid rgba(245,158,11,.3);}.sa-scope .sa-btn-red{background:rgba(248,113,113,.12);color:var(--sa-red);border:1px solid rgba(248,113,113,.3);}.sa-scope .sa-btn-sm{padding:4px 10px;font-size:12px;}.sa-scope .sa-btn:disabled{opacity:.5;cursor:not-allowed;}.sa-scope .sa-main{padding:24px 28px;max-width:1400px;margin:0 auto;}.sa-scope .sa-stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px;}.sa-scope .sa-stat{background:var(--sa-surface);border:1px solid var(--sa-border);border-radius:10px;padding:16px;position:relative;overflow:hidden;}.sa-scope .sa-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}.sa-scope .sa-stat.sa-green::before{background:var(--sa-green);}.sa-scope .sa-stat.sa-blue::before{background:var(--sa-blue);}.sa-scope .sa-stat.sa-orange::before{background:var(--sa-orange);}.sa-scope .sa-stat.sa-red::before{background:var(--sa-red);}.sa-scope .sa-stat.sa-purple::before{background:var(--sa-purple);}.sa-scope .sa-stat-val{font-size:26px;font-weight:800;font-family:'Courier New',monospace;line-height:1;}.sa-scope .sa-stat-lbl{font-size:11px;color:var(--sa-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}.sa-scope .sa-card{background:var(--sa-surface);border:1px solid var(--sa-border);border-radius:12px;overflow:hidden;}.sa-scope .sa-card-toolbar{padding:14px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--sa-border);}.sa-scope .sa-card-toolbar-left{display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;}.sa-scope .sa-search-input{background:var(--sa-surface2);border:1px solid var(--sa-border);border-radius:7px;color:var(--sa-text);padding:7px 12px;font-size:13px;outline:none;width:200px;}.sa-scope .sa-search-input:focus{border-color:var(--sa-blue);}.sa-scope .sa-filter-select{background:var(--sa-surface2);border:1px solid var(--sa-border);border-radius:7px;color:var(--sa-text);padding:7px 10px;font-size:12px;outline:none;cursor:pointer;}.sa-scope .sa-tbl-wrap{overflow-x:auto;}.sa-scope table{width:100%;border-collapse:collapse;font-size:13px;}.sa-scope th{text-align:left;padding:10px 14px;font-size:11px;color:var(--sa-muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--sa-border);white-space:nowrap;cursor:pointer;user-select:none;}.sa-scope th:hover{color:var(--sa-text);}.sa-scope td{padding:11px 14px;border-bottom:1px solid var(--sa-border);}.sa-scope tr:last-child td{border-bottom:none;}.sa-scope tr:hover td{background:rgba(255,255,255,.02);}.sa-scope .sa-mono{font-family:monospace;}.sa-scope .sa-loading, .sa-scope .sa-empty{text-align:center;color:var(--sa-dim);padding:32px;font-size:13px;}.sa-scope .sa-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:monospace;}.sa-scope .sa-badge-active{background:rgba(74,222,128,.12);color:var(--sa-green);border:1px solid rgba(74,222,128,.25);}.sa-scope .sa-badge-trial{background:rgba(96,165,250,.12);color:var(--sa-blue);border:1px solid rgba(96,165,250,.25);}.sa-scope .sa-badge-suspended{background:rgba(245,158,11,.12);color:var(--sa-orange);border:1px solid rgba(245,158,11,.25);}.sa-scope .sa-badge-expired{background:rgba(248,113,113,.12);color:var(--sa-red);border:1px solid rgba(248,113,113,.25);}.sa-scope .sa-badge-removed{background:rgba(85,94,117,.2);color:var(--sa-dim);}.sa-scope .sa-plan-trial{font-size:11px;color:var(--sa-blue);background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);border-radius:4px;padding:2px 7px;font-family:monospace;}.sa-scope .sa-plan-basic{font-size:11px;color:var(--sa-muted);background:var(--sa-surface2);border:1px solid var(--sa-border);border-radius:4px;padding:2px 7px;font-family:monospace;}.sa-scope .sa-plan-standard{font-size:11px;color:var(--sa-orange);background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:4px;padding:2px 7px;font-family:monospace;}.sa-scope .sa-plan-pro{font-size:11px;color:var(--sa-purple);background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:4px;padding:2px 7px;font-family:monospace;}.sa-scope .sa-ping-fresh{color:var(--sa-green);}.sa-scope .sa-ping-recent{color:var(--sa-orange);}.sa-scope .sa-ping-stale{color:var(--sa-dim);}.sa-scope .sa-expiry-ok{color:var(--sa-green);}.sa-scope .sa-expiry-warn{color:var(--sa-orange);}.sa-scope .sa-expiry-danger{color:var(--sa-red);}.sa-scope .sa-expiry-expired{color:var(--sa-dim);text-decoration:line-through;}.sa-scope .sa-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;}.sa-scope .sa-modal-overlay.sa-open{display:flex;}.sa-scope .sa-modal{background:var(--sa-surface);border:1px solid var(--sa-border);border-radius:14px;padding:28px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;}.sa-scope .sa-modal-title{font-size:17px;font-weight:700;margin-bottom:20px;}.sa-scope .sa-form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:500px){.sa-scope .sa-form-row{grid-template-columns:1fr;}}.sa-scope .sa-form-group{margin-bottom:14px;}.sa-scope .sa-form-label{display:block;font-size:11px;color:var(--sa-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}.sa-scope .sa-form-input{width:100%;padding:9px 12px;background:var(--sa-surface2);border:1px solid var(--sa-border);border-radius:7px;color:var(--sa-text);font-size:13px;outline:none;}.sa-scope .sa-form-input:focus{border-color:var(--sa-accent);}.sa-scope select.sa-form-input{cursor:pointer;}.sa-scope .sa-form-hint{font-size:11px;color:var(--sa-dim);margin-top:4px;}.sa-scope .sa-modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--sa-border);}.sa-scope .sa-form-section{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sa-muted);border-bottom:1px solid var(--sa-border);padding-bottom:8px;margin-bottom:16px;margin-top:4px;}.sa-scope .sa-features-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}.sa-scope .sa-feat-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--sa-border);border-radius:7px;cursor:pointer;}.sa-scope .sa-feat-item:hover{border-color:var(--sa-border2);}.sa-scope .sa-feat-item input{accent-color:var(--sa-accent);width:15px;height:15px;flex-shrink:0;}.sa-scope .sa-feat-icon{font-size:16px;}.sa-scope .sa-feat-label{font-size:12px;font-weight:600;}.sa-scope .sa-feat-desc{font-size:10px;color:var(--sa-muted);}.sa-scope #sa-detailDrawer{display:none;position:fixed;top:56px;right:0;bottom:0;width:400px;background:var(--sa-surface);border-left:1px solid var(--sa-border);z-index:90;overflow-y:auto;transition:transform .25s;}.sa-scope #sa-detailDrawer.sa-open{display:block;}.sa-scope .sa-drawer-header{padding:20px;border-bottom:1px solid var(--sa-border);display:flex;align-items:center;justify-content:space-between;}.sa-scope .sa-drawer-body{padding:20px;}.sa-scope .sa-drawer-section{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--sa-dim);margin-bottom:10px;margin-top:18px;}.sa-scope .sa-drawer-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);}.sa-scope .sa-drawer-key{font-size:12px;color:var(--sa-muted);}.sa-scope .sa-drawer-val{font-size:13px;font-weight:500;text-align:right;max-width:200px;word-break:break-all;}.sa-scope .sa-toast{position:fixed;bottom:28px;right:28px;background:var(--sa-surface);border:1px solid var(--sa-border);border-radius:10px;padding:12px 18px;font-size:13px;z-index:9999;animation:slideUp .2s ease;box-shadow:0 4px 20px rgba(0,0,0,.3);}.sa-scope .sa-toast.sa-success{border-color:rgba(74,222,128,.4);color:var(--sa-green);}.sa-scope .sa-toast.sa-error{border-color:rgba(248,113,113,.4);color:var(--sa-red);}.sa-scope .sa-toast.sa-warn{border-color:rgba(245,158,11,.4);color:var(--sa-orange);}
+@keyframes slideUp{.sa-scope from{transform:translateY(20px);opacity:0;}.sa-scope to{transform:translateY(0);opacity:1;}}
+@keyframes spin{.sa-scope to{transform:rotate(360deg);}}.sa-scope .sa-spinner{animation:spin .8s linear infinite;display:inline-block;}
+
 </style>
 </head>
 <body>
@@ -596,7 +610,7 @@ select.form-input option{background:var(--surface);}
       <span>Welcome, Super Admin</span>
     </div>
     <div class="login-tagline">Where would you like to go?</div>
-    <button class="login-btn login-btn-admin" onclick="window.location.href='SuperAdmin.html'" style="width:100%;margin-top:12px;">📊 Open Super Admin Dashboard</button>
+    <button class="login-btn login-btn-admin" onclick="document.getElementById('loginScreen').style.display='none';openSuperAdminDashboard();" style="width:100%;margin-top:12px;">📊 Open Super Admin Dashboard</button>
     <button class="login-btn" id="superAdminEnterInstBtn" onclick="enterAsInstituteAdmin()" style="width:100%;margin-top:10px;background:var(--rc-blue);color:#fff;display:none;">🏫 Enter as Institute Admin</button>
     <div style="text-align:center;margin-top:16px;">
       <button onclick="doLogout()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">Sign out</button>
@@ -1349,7 +1363,502 @@ select.form-input option{background:var(--surface);}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ══ SUPER ADMIN DASHBOARD LOGIC (integrated) ══════════════════════════════════
+
+// Generate a clean institute code from the name: letters/numbers only, uppercase
+function generateInstituteCode(name){
+  let base = name.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if(!base) base = "INST";
+  return base.slice(0, 16); // keep it reasonably short
+}
+
+async function ensureUniqueInstituteCode(name){
+  let code = generateInstituteCode(name);
+  let attempt = 0;
+  while(attempt < 5){
+    const existing = await supaFetch("institutes?institute_code=eq." + code + "&select=id");
+    if(!existing || !existing.length) return code; // available
+    attempt++;
+    code = generateInstituteCode(name) + attempt; // CUBEGURU1, CUBEGURU2...
+  }
+  return code + Date.now().toString().slice(-4); // fallback, virtually guaranteed unique
+}
+let MASTER_SECRET = "";
+let institutes    = [];
+let editingId     = null;
+let sortCol       = "lastPing";
+let sortDir       = -1; // -1 = desc, 1 = asc
+
+// Plan config
+const PLAN_LIMITS = { trial:30, basic:30, standard:100, pro:999999, custom:0 };
+const PLAN_DAYS   = { trial:30, basic:365, standard:365, pro:365, custom:30 };
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function doSignOut(){
+  closeSuperAdminDashboard();
+  await doLogout(); // index.html's own logout — clears the real session properly
+}
+
+function openSuperAdminDashboard(){
+  document.getElementById("saAppContainer").style.display="block";
+  document.getElementById("sa-app").style.display="block";
+  loadData();
+}
+function closeSuperAdminDashboard(){
+  document.getElementById("saAppContainer").style.display="none";
+  document.getElementById("loginScreen").style.display="flex";
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+async function loadData(){
+  document.getElementById("sa-tableBody").innerHTML=
+    `<tr><td colspan="9" class="sa-loading"><span class="sa-spinner">⟳</span> Loading…</td></tr>`;
+  try{
+    // Load institutes directly from Supabase — the real source of truth now.
+    // (MasterRegistry.gs / Google Sheet registry is legacy, kept only for
+    // institutes still on the old per-Sheet system, if any remain.)
+    const rows = await supaFetch("institutes?select=*&order=created_at.desc");
+    institutes = (rows||[]).map(r=>({
+      id: r.id,
+      name: r.name,
+      ownerName: r.owner_name||"",
+      ownerPhone: r.owner_phone||"",
+      ownerEmail: r.owner_email||"",
+      deployUrl: r.deploy_url||"",
+      instituteCode: r.institute_code||"",
+      plan: r.plan||"trial",
+      studentsMax: r.students_max||30,
+      expiryDate: r.expiry_date||"",
+      status: r.status||"active",
+      createdDate: (r.created_at||"").slice(0,10),
+      lastPing: r.updated_at||"",
+      studentCount: r.student_count||0,
+      trainerCount: r.trainer_count||0,
+      totalRevenue: r.total_revenue||0,
+      notes: r.notes||"",
+      daysLeft: r.expiry_date ? Math.floor((new Date(r.expiry_date)-new Date())/86400000) : 999,
+      features: (r.features||"attendance,fees,progress,whatsapp,reports,portal").split(",").filter(Boolean),
+    }));
+
+    const stats = {
+      total: institutes.length,
+      active: institutes.filter(i=>i.status==="active").length,
+      trial: institutes.filter(i=>i.plan==="trial").length,
+      expired: institutes.filter(i=>i.status==="expired").length,
+      students: institutes.reduce((s,i)=>s+(i.studentCount||0),0),
+      revenue: institutes.reduce((s,i)=>s+(i.totalRevenue||0),0),
+    };
+    renderStats(stats);
+    renderTable();
+    document.getElementById("sa-lastRefreshed").textContent=
+      "Refreshed "+new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){
+    document.getElementById("sa-tableBody").innerHTML=
+      `<tr><td colspan="9" class="sa-loading" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderStats(s){
+  document.getElementById("sa-s-total").textContent   = s.total    || 0;
+  document.getElementById("sa-s-active").textContent  = s.active   || 0;
+  document.getElementById("sa-s-trial").textContent   = s.trial    || 0;
+  document.getElementById("sa-s-expired").textContent = s.expired  || 0;
+  document.getElementById("sa-s-students").textContent= s.students || 0;
+  const rev = s.revenue || 0;
+  document.getElementById("sa-s-revenue").textContent =
+    rev >= 100000 ? "₹"+(rev/100000).toFixed(1)+"L"
+    : rev >= 1000 ? "₹"+(rev/1000).toFixed(1)+"k"
+    : "₹"+rev;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function setSortFilter(col){
+  if(sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=-1; }
+  document.getElementById("sa-sortFilter").value=col;
+  renderTable();
+}
+function renderTable(){
+  const search=(document.getElementById("sa-searchInput").value||"").toLowerCase();
+  const status=document.getElementById("sa-statusFilter").value;
+  const plan=document.getElementById("sa-planFilter").value;
+  sortCol=document.getElementById("sa-sortFilter").value||sortCol;
+
+  let list=institutes.filter(i=>{
+    if(status&&i.status!==status) return false;
+    if(plan&&i.plan!==plan) return false;
+    if(search&&![i.name,i.ownerName,i.ownerPhone,i.ownerEmail]
+        .some(v=>(v||"").toLowerCase().includes(search))) return false;
+    return true;
+  });
+
+  list.sort((a,b)=>{
+    let av,bv;
+    if(sortCol==="name")         { av=a.name||""; bv=b.name||""; return av.localeCompare(bv)*sortDir; }
+    if(sortCol==="expiryDate")   { av=a.daysLeft??999; bv=b.daysLeft??999; }
+    else if(sortCol==="studentCount"){ av=a.studentCount||0; bv=b.studentCount||0; }
+    else if(sortCol==="totalRevenue"){ av=a.totalRevenue||0; bv=b.totalRevenue||0; }
+    else { av=new Date(a.lastPing||0); bv=new Date(b.lastPing||0); }
+    return (bv-av)*sortDir;
+  });
+
+  document.getElementById("sa-tableCount").textContent=list.length+" institutes";
+
+  if(!list.length){
+    document.getElementById("sa-tableBody").innerHTML=
+      `<tr><td colspan="9" class="sa-empty">No institutes found</td></tr>`;
+    return;
+  }
+
+  document.getElementById("sa-tableBody").innerHTML=list.map(inst=>{
+    const statusBadge=`<span class="sa-badge badge-${inst.status||'trial'}">${inst.status||'trial'}</span>`;
+    const planClass="sa-plan-"+(inst.plan||"trial");
+
+    const dl=inst.daysLeft??999;
+    const expiryClass=dl<0?"sa-expiry-expired":dl<7?"sa-expiry-danger":dl<30?"sa-expiry-warn":"sa-expiry-ok";
+    const expiryText=dl<0?"Expired":dl===0?"Today":dl<30?dl+"d left":(inst.expiryDate||"—");
+
+    const ping=inst.lastPing?new Date(inst.lastPing):null;
+    const pingAgo=ping?Math.floor((Date.now()-ping)/3600000):null;
+    const pingClass=!ping?"sa-ping-stale":pingAgo<24?"sa-ping-fresh":pingAgo<168?"sa-ping-recent":"sa-ping-stale";
+    const pingText=!ping?"Never":pingAgo<1?"< 1h ago":pingAgo<24?pingAgo+"h ago":Math.floor(pingAgo/24)+"d ago";
+
+    const waLink=inst.ownerPhone
+      ?`<a href="https://wa.me/${inst.ownerPhone.replace(/[^0-9]/g,'')}" target="_blank" title="WhatsApp owner">📱</a>`:"";
+
+    return`<tr>
+      <td>
+        <div style="font-weight:600;font-size:13px;cursor:pointer;color:var(--blue);" onclick="openDrawer('${inst.id}')">${inst.name||"—"}</div>
+        <div class="sa-mono" style="font-size:10px;color:var(--dim);">${inst.id||""}</div>
+      </td>
+      <td>
+        <div>${inst.ownerName||"—"} ${waLink}</div>
+        <div style="font-size:11px;color:var(--muted);">${inst.ownerPhone||""}</div>
+      </td>
+      <td><span class="${planClass}">${(inst.plan||"trial").toUpperCase()}</span></td>
+      <td>${statusBadge}</td>
+      <td class="sa-mono">
+        <span style="color:var(--text);font-weight:600;">${inst.studentCount||0}</span>
+        <span style="color:var(--dim);">/${inst.studentsMax||30}</span>
+      </td>
+      <td class="sa-mono" style="color:var(--green);">
+        ${inst.totalRevenue?`₹${Number(inst.totalRevenue).toLocaleString("en-IN")}`:"—"}
+      </td>
+      <td class="${expiryClass} sa-mono" style="font-size:12px;">${expiryText}</td>
+      <td class="${pingClass}" style="font-size:12px;">${pingText}</td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="openEditModal('${inst.id}')">✎</button>
+          <button class="sa-btn sa-btn-green sa-btn-sm" onclick="extendDays('${inst.id}',30)" title="+30 days">+30d</button>
+          <button class="sa-btn sa-btn-orange sa-btn-sm" onclick="toggleSuspend('${inst.id}')" title="Suspend/Activate">
+            ${inst.status==="suspended"?"▶":"⏸"}
+          </button>
+          ${inst.ownerPhone?`<a href="${buildWAMessage(inst)}" target="_blank" class="sa-btn sa-btn-ghost sa-btn-sm" style="text-decoration:none;" title="Send WhatsApp">📲</a>`:""}
+          ${inst.deployUrl?`<button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="pingInstitute('${inst.id}')" title="Ping their server">⬡</button>`:""}
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+// ── WhatsApp message builder ───────────────────────────────────────────────────
+function buildWAMessage(inst){
+  const phone=(inst.ownerPhone||"").replace(/[^0-9]/g,"");
+  const msg=encodeURIComponent(
+    `Hi ${inst.ownerName||"there"}, this is EduTrack.\n\n`+
+    `Your institute *${inst.name}* is registered with us.\n\n`+
+    `Plan: *${(inst.plan||"trial").toUpperCase()}*\n`+
+    `Expiry: *${inst.expiryDate||"—"}*\n`+
+    `Access: ${inst.deployUrl||"—"}\n\n`+
+    `For support, reply to this message.`
+  );
+  return `https://wa.me/${phone}?text=${msg}`;
+}
+function openWAPreview(){
+  const name=document.getElementById("sa-f-name").value||"Institute";
+  const phone=(document.getElementById("sa-f-ownerPhone").value||"").replace(/[^0-9]/g,"");
+  const ownerName=document.getElementById("sa-f-ownerName").value||"there";
+  const plan=document.getElementById("sa-f-plan").value||"trial";
+  const expiry=document.getElementById("sa-f-expiryDate").value||"—";
+  const deployUrl=document.getElementById("sa-f-deployUrl").value||"—";
+  const msg=encodeURIComponent(
+    `Hi ${ownerName}, Welcome to EduTrack! 🎉\n\n`+
+    `Your institute *${name}* has been set up.\n\n`+
+    `📌 App link: https://pavanakula02-lab.github.io/Cubeguru/\n`+
+    `🔑 Your data URL: ${deployUrl}\n\n`+
+    `Plan: *${plan.toUpperCase()}* | Expiry: *${expiry}*\n\n`+
+    `Default login: admin / admin123 (please change on first login)\n\n`+
+    `Reply here if you need any help getting started!`
+  );
+  window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+}
+
+// ── Detail drawer ─────────────────────────────────────────────────────────────
+function openDrawer(id){
+  const inst=institutes.find(i=>i.id===id);
+  if(!inst) return;
+  document.getElementById("sa-drawerName").textContent=inst.name||"—";
+  document.getElementById("sa-drawerId").textContent=inst.id||"—";
+
+  const dl=inst.daysLeft??999;
+  const ping=inst.lastPing?new Date(inst.lastPing):null;
+  const pingText=!ping?"Never":Math.floor((Date.now()-ping)/3600000)<24?
+    Math.floor((Date.now()-ping)/3600000)+"h ago":Math.floor((Date.now()-ping)/86400000)+"d ago";
+
+  document.getElementById("sa-drawerBody").innerHTML=`
+    <div class="sa-drawer-section">Contact</div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Owner</span><span class="sa-drawer-val">${inst.ownerName||"—"}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Phone</span><span class="sa-drawer-val">${inst.ownerPhone?`<a href="https://wa.me/${(inst.ownerPhone||"").replace(/[^0-9]/g,"")}" target="_blank">${inst.ownerPhone}</a>`:"—"}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Email</span><span class="sa-drawer-val">${inst.ownerEmail||"—"}</span></div>
+
+    <div class="sa-drawer-section">Subscription</div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Plan</span><span class="sa-drawer-val">${(inst.plan||"—").toUpperCase()}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Status</span><span class="sa-drawer-val">${inst.status||"—"}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Expiry</span><span class="sa-drawer-val" style="color:${dl<7?"var(--red)":dl<30?"var(--orange)":"var(--green)"}">${inst.expiryDate||"—"} (${dl<0?"expired":dl+"d left"})</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Students</span><span class="sa-drawer-val">${inst.studentCount||0} / ${inst.studentsMax||30}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Members</span><span class="sa-drawer-val">${inst.trainerCount||0}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Revenue</span><span class="sa-drawer-val" style="color:var(--green)">₹${Number(inst.totalRevenue||0).toLocaleString("en-IN")}</span></div>
+
+    <div class="sa-drawer-section">Technical</div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Created</span><span class="sa-drawer-val">${inst.createdDate||"—"}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Last Active</span><span class="sa-drawer-val">${pingText}</span></div>
+    <div class="sa-drawer-row"><span class="sa-drawer-key">Deploy URL</span><span class="sa-drawer-val" style="font-size:10px;">${inst.deployUrl?`<a href="${inst.deployUrl}" target="_blank">Open ↗</a>`:"—"}</span></div>
+
+    <div class="sa-drawer-section">Notes</div>
+    <div style="font-size:12px;color:var(--muted);padding:4px 0;">${inst.notes||"No notes."}</div>
+
+    <div class="sa-drawer-section">Quick Actions</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+      <button class="sa-btn sa-btn-green" style="justify-content:center;" onclick="extendDays('${inst.id}',30)">➕ Extend 30 Days</button>
+      <button class="sa-btn sa-btn-orange" style="justify-content:center;" onclick="extendDays('${inst.id}',365)">📅 Extend 1 Year</button>
+      <button class="sa-btn sa-btn-ghost" style="justify-content:center;" onclick="closeDrawer();openEditModal('${inst.id}')">✎ Edit Details</button>
+      ${inst.ownerPhone?`<a href="${buildWAMessage(inst)}" target="_blank" class="sa-btn sa-btn-ghost" style="justify-content:center;text-decoration:none;">📲 Send WhatsApp</a>`:""}
+      <button class="sa-btn sa-btn-red" style="justify-content:center;" onclick="toggleSuspend('${inst.id}')">
+        ${inst.status==="suspended"?"▶ Reactivate":"⏸ Suspend"}
+      </button>
+      <button class="sa-btn sa-btn-red" style="justify-content:center;background:#7f1d1d;" onclick="deleteInstitute('${inst.id}','${inst.name.replace(/'/g,"\\'")}')">🗑 Delete Permanently</button>
+    </div>
+  `;
+  document.getElementById("sa-detailDrawer").classList.add("sa-open");
+}
+function closeDrawer(){ document.getElementById("sa-detailDrawer").classList.remove("sa-open"); }
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function onPlanChange(){
+  const plan=document.getElementById("sa-f-plan").value;
+  const max=PLAN_LIMITS[plan]||30;
+  document.getElementById("sa-f-studentsMax").value=max===999999?"Unlimited":max;
+  if(!editingId){
+    const d=new Date();
+    d.setDate(d.getDate()+(PLAN_DAYS[plan]||30));
+    document.getElementById("sa-f-expiryDate").value=d.toISOString().split("T")[0];
+  }
+}
+
+function openAddModal(){
+  editingId=null;
+  document.getElementById("sa-modalTitle").textContent="Add Institute";
+  document.getElementById("sa-modalSaveBtn").textContent="Add Institute";
+  document.getElementById("sa-editId").value="";
+  document.getElementById("sa-waPreviewBtn").style.display="inline-flex";
+  ["sa-f-name","sa-f-ownerName","sa-f-ownerPhone","sa-f-ownerEmail","sa-f-deployUrl","sa-f-notes"].forEach(id=>
+    document.getElementById(id).value="");
+  document.getElementById("sa-f-plan").value="trial";
+  document.getElementById("sa-f-status").value="active";
+  document.getElementById("sa-f-studentsMax").value="30";
+  // Default all features on
+  ["attendance","fees","progress","whatsapp","reports","portal","members","pwa"].forEach(f=>
+    document.getElementById("sa-feat-"+f).checked=["attendance","fees","progress","whatsapp","reports","portal"].includes(f));
+  const d=new Date(); d.setDate(d.getDate()+30);
+  document.getElementById("sa-f-expiryDate").value=d.toISOString().split("T")[0];
+  document.getElementById("sa-modalErr").style.display="none";
+  document.getElementById("sa-modalOverlay").classList.add("sa-open");
+  setTimeout(()=>document.getElementById("sa-f-name").focus(),100);
+}
+
+function openEditModal(id){
+  const inst=institutes.find(i=>i.id===id);
+  if(!inst) return;
+  editingId=id;
+  document.getElementById("sa-modalTitle").textContent="Edit Institute";
+  document.getElementById("sa-modalSaveBtn").textContent="Save Changes";
+  document.getElementById("sa-editId").value=id;
+  document.getElementById("sa-waPreviewBtn").style.display="none";
+  document.getElementById("sa-f-name").value       =inst.name||"";
+  document.getElementById("sa-f-ownerName").value  =inst.ownerName||"";
+  document.getElementById("sa-f-ownerPhone").value =inst.ownerPhone||"";
+  document.getElementById("sa-f-ownerEmail").value =inst.ownerEmail||"";
+  document.getElementById("sa-f-deployUrl").value  =inst.deployUrl||"";
+  document.getElementById("sa-f-plan").value       =inst.plan||"trial";
+  document.getElementById("sa-f-expiryDate").value =inst.expiryDate||"";
+  document.getElementById("sa-f-status").value     =inst.status||"active";
+  document.getElementById("sa-f-studentsMax").value=inst.studentsMax||30;
+  document.getElementById("sa-f-notes").value      =inst.notes||"";
+  // Load features into checkboxes
+  const instFeatures = inst.features || ["attendance","fees","progress","whatsapp","reports","portal"];
+  ["attendance","fees","progress","whatsapp","reports","portal","members","pwa"].forEach(f=>{
+    const el=document.getElementById("sa-feat-"+f);
+    if(el) el.checked = instFeatures.includes(f);
+  });
+  document.getElementById("sa-modalErr").style.display="none";
+  document.getElementById("sa-modalOverlay").classList.add("sa-open");
+}
+
+function closeSAModal(){ document.getElementById("sa-modalOverlay").classList.remove("sa-open"); }
+
+async function saveInstitute(){
+  const name=document.getElementById("sa-f-name").value.trim();
+  if(!name){ showModalErr("Institute name is required"); return; }
+
+  // Collect enabled features
+  const features=["attendance","fees","progress","whatsapp","reports","portal","members","pwa"]
+    .filter(f=>document.getElementById("sa-feat-"+f)?.checked);
+
+  const planLimits = { trial:30, basic:30, standard:100, pro:99999 };
+  const plan = document.getElementById("sa-f-plan").value || "trial";
+  const studentsMax = planLimits[plan] || 30;
+  const expiryDate = document.getElementById("sa-f-expiryDate").value ||
+    new Date(Date.now() + 30*86400000).toISOString().split("T")[0];
+
+  const btn=document.getElementById("sa-modalSaveBtn");
+  btn.textContent="Saving…"; btn.disabled=true;
+
+  try{
+    if(editingId){
+      // ── Update existing institute directly in Supabase ──────────────────────
+      await supaFetch("institutes?id=eq."+editingId, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name,
+          status: document.getElementById("sa-f-status").value,
+          updated_at: new Date().toISOString()
+        })
+      });
+      closeSAModal();
+      showToast("Institute updated ✓","success");
+      await loadData();
+    } else {
+      // ── Create new institute directly in Supabase — auto-generates code ─────
+      const code = await ensureUniqueInstituteCode(name);
+      const row = await supaFetch("institutes", {
+        method: "POST",
+        headers: { "Prefer": "return=representation" },
+        body: JSON.stringify({
+          name,
+          institute_code: code,
+          setup_done: false
+        })
+      });
+      const newInstituteId = row[0].id;
+
+      // Create their default "admin" Auth account via the Edge Function
+      // (service_role key never touches this browser — it stays server-side)
+      const { data: sessionData } = await sb.auth.getSession();
+      const fnResp = await fetch(SUPABASE_URL + "/functions/v1/create-institute-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + sessionData.session.access_token },
+        body: JSON.stringify({
+          instituteId: newInstituteId,
+          callerAccessToken: sessionData.session.access_token
+        })
+      });
+      const fnResult = await fnResp.json();
+      if(!fnResult.ok) console.warn("Admin account creation issue:", fnResult.error);
+
+      closeSAModal();
+      showInstituteCreatedModal(name, code);
+      await loadData();
+    }
+  }catch(e){ showModalErr(e.message); }
+  finally{ btn.textContent=editingId?"Save Changes":"Add Institute"; btn.disabled=false; }
+}
+
+// ── Show the new institute code prominently after creation ───────────────────
+function showInstituteCreatedModal(name, code){
+  const el = document.createElement("div");
+  el.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;";
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:32px;max-width:420px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.2);">
+      <div style="font-size:40px;margin-bottom:12px;">🎉</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px;">${name} is ready!</div>
+      <div style="font-size:13px;color:#666;margin-bottom:20px;">Give the owner this Institute Code:</div>
+      <div style="background:#f4f4f7;border:2px dashed #e63946;border-radius:10px;padding:16px;font-size:24px;font-weight:900;letter-spacing:2px;color:#e63946;font-family:monospace;margin-bottom:20px;">${code}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px;line-height:1.6;">
+        Send them: the app link + this code + default login<br>
+        Username: <b>admin</b> &nbsp; Password: <b>admin123</b>
+      </div>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#e63946;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-weight:700;cursor:pointer;">Got it</button>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+function showModalErr(msg){
+  const el=document.getElementById("sa-modalErr");
+  el.textContent=msg; el.style.display="block";
+}
+
+// ── Quick actions ─────────────────────────────────────────────────────────────
+async function extendDays(id, days){
+  const inst=institutes.find(i=>i.id===id);
+  if(!inst) return;
+  const current=new Date(inst.expiryDate||new Date());
+  const base=Math.max(current,new Date());
+  const newDate=new Date(base);
+  newDate.setDate(newDate.getDate()+days);
+  const expiryDate=newDate.toISOString().split("T")[0];
+  try{
+    await supaFetch("institutes?id=eq."+id, {
+      method: "PATCH",
+      body: JSON.stringify({ expiry_date: expiryDate, status: "active", updated_at: new Date().toISOString() })
+    });
+    showToast(`Extended to ${expiryDate} ✓`,"success");
+    closeDrawer();
+    loadData();
+  }catch(e){ showToast("Error: "+e.message,"error"); }
+}
+
+async function toggleSuspend(id){
+  const inst=institutes.find(i=>i.id===id);
+  if(!inst) return;
+  const newStatus=inst.status==="suspended"?"active":"suspended";
+  if(!confirm(`${newStatus==="suspended"?"Reactivate":"Suspend"} ${inst.name}?`)) return;
+  try{
+    await supaFetch("institutes?id=eq."+id, {
+      method: "PATCH",
+      body: JSON.stringify({ status: newStatus, updated_at: new Date().toISOString() })
+    });
+    showToast(`${inst.name} ${newStatus==="suspended"?"suspended":"reactivated"} ✓`,"success");
+    closeDrawer();
+    loadData();
+  }catch(e){ showToast("Error: "+e.message,"error"); }
+}
+
+async function deleteInstitute(id, name){
+  if(!confirm(`Permanently delete "${name}"? This removes ALL their data — students, attendance, fees, everything. This cannot be undone.`)) return;
+  if(!confirm(`Are you absolutely sure? Type-checking again: this will erase "${name}" forever.`)) return;
+  try{
+    await supaFetch("institutes?id=eq."+id, { method: "DELETE" });
+    showToast(`${name} deleted permanently`,"success");
+    closeDrawer();
+    loadData();
+  }catch(e){ showToast("Error: "+e.message,"error"); }
+}
+
+async function pingInstitute(id){
+  const inst=institutes.find(i=>i.id===id);
+  if(!inst||!inst.deployUrl) return;
+  showToast("Pinging…","warn");
+  try{
+    const r=await fetch(inst.deployUrl+"?action=ping");
+    const j=await r.json();
+    showToast(j.ok?`${inst.name} is live ✓ (${j.ts?.slice(11,19)||"ok"})`:`${inst.name} returned error: ${j.error||"unknown"}`
+      , j.ok?"success":"error");
+  }catch(e){ showToast(`${inst.name} unreachable: ${e.message}`,"error"); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+</script>
 <script>
 // ══ CONSTANTS ══════════════════════════════════════════════════════════════════
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -5724,6 +6233,193 @@ init();
       <button class="btn btn-primary" onclick="submitBugReport()">Send Report</button>
     </div>
   </div>
+</div>
+
+
+<!-- ══ SUPER ADMIN DASHBOARD (integrated) ══ -->
+<div class="sa-scope" id="saAppContainer" style="display:none;">
+<!-- ══ APP ══ -->
+<div id="sa-app">
+  <div class="sa-topbar">
+    <div class="sa-topbar-left">
+      <div class="sa-logo-mark">C</div>
+      <div class="sa-logo-text">EduTrack</div>
+      <div class="sa-logo-badge">SUPER ADMIN</div>
+    </div>
+    <div class="sa-topbar-right">
+      <span class="sa-topbar-info" id="sa-lastRefreshed">—</span>
+      <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="loadData()">↻ Refresh</button>
+      <button class="sa-btn sa-btn-primary" onclick="openAddModal()">+ Add Institute</button>
+      <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="closeSuperAdminDashboard()">← Back to login</button>
+      <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="sa-main">
+    <!-- Stats -->
+    <div class="sa-stats-row">
+      <div class="sa-stat sa-green"><div class="sa-stat-val" id="sa-s-active">—</div><div class="sa-stat-lbl">Active</div></div>
+      <div class="sa-stat sa-blue"><div class="sa-stat-val" id="sa-s-trial">—</div><div class="sa-stat-lbl">Trial</div></div>
+      <div class="sa-stat sa-orange"><div class="sa-stat-val" id="sa-s-expired">—</div><div class="sa-stat-lbl">Expired</div></div>
+      <div class="sa-stat sa-purple"><div class="sa-stat-val" id="sa-s-students">—</div><div class="sa-stat-lbl">Students</div></div>
+      <div class="sa-stat sa-green"><div class="sa-stat-val" id="sa-s-revenue">—</div><div class="sa-stat-lbl">Revenue</div></div>
+      <div class="sa-stat sa-blue"><div class="sa-stat-val" id="sa-s-total">—</div><div class="sa-stat-lbl">Total</div></div>
+    </div>
+
+    <!-- Institute table -->
+    <div class="sa-card">
+      <div class="sa-card-toolbar">
+        <div class="sa-card-toolbar-left">
+          <input class="sa-search-input" id="sa-searchInput" placeholder="🔍 Search name / owner / phone…" oninput="renderTable()">
+          <select class="sa-filter-select" id="sa-statusFilter" onchange="renderTable()">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="trial">Trial</option>
+            <option value="suspended">Suspended</option>
+            <option value="expired">Expired</option>
+          </select>
+          <select class="sa-filter-select" id="sa-planFilter" onchange="renderTable()">
+            <option value="">All Plans</option>
+            <option value="trial">Trial</option>
+            <option value="basic">Basic</option>
+            <option value="standard">Standard</option>
+            <option value="pro">Pro</option>
+          </select>
+          <select class="sa-filter-select" id="sa-sortFilter" onchange="renderTable()">
+            <option value="lastPing">Sort: Last Active</option>
+            <option value="name">Sort: Name</option>
+            <option value="expiryDate">Sort: Expiry</option>
+            <option value="studentCount">Sort: Students</option>
+            <option value="totalRevenue">Sort: Revenue</option>
+          </select>
+        </div>
+        <span id="sa-tableCount" style="font-size:12px;color:var(--dim);"></span>
+      </div>
+      <div class="sa-tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="setSortFilter('name')">Institute</th>
+              <th onclick="setSortFilter('name')">Owner</th>
+              <th>Plan</th>
+              <th>Status</th>
+              <th onclick="setSortFilter('studentCount')">Students</th>
+              <th onclick="setSortFilter('totalRevenue')">Revenue</th>
+              <th onclick="setSortFilter('expiryDate')">Expiry</th>
+              <th>Last Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sa-tableBody"><tr><td colspan="9" class="sa-loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD / EDIT MODAL ══ -->
+<div class="sa-modal-overlay" id="sa-modalOverlay" onclick="if(event.target===this)closeSAModal()">
+  <div class="sa-modal">
+    <div class="sa-modal-title" id="sa-modalTitle">Add Institute</div>
+    <input type="hidden" id="sa-editId">
+
+    <div class="sa-form-section">Institute Info</div>
+    <div class="sa-form-row">
+      <div class="sa-form-group">
+        <label class="sa-form-label">Institute Name *</label>
+        <input class="sa-form-input" id="sa-f-name" placeholder="e.g. Bright Cubers Academy">
+      </div>
+      <div class="sa-form-group">
+        <label class="sa-form-label">Owner Name</label>
+        <input class="sa-form-input" id="sa-f-ownerName" placeholder="Admin's full name">
+      </div>
+    </div>
+    <div class="sa-form-row">
+      <div class="sa-form-group">
+        <label class="sa-form-label">Owner WhatsApp</label>
+        <input class="sa-form-input" id="sa-f-ownerPhone" placeholder="+91 98765 43210" type="tel">
+      </div>
+      <div class="sa-form-group">
+        <label class="sa-form-label">Owner Email</label>
+        <input class="sa-form-input" id="sa-f-ownerEmail" placeholder="admin@institute.com" type="email">
+      </div>
+    </div>
+    <div class="sa-form-group" style="display:none;">
+      <label class="sa-form-label">Apps Script Deploy URL (legacy, optional)</label>
+      <input class="sa-form-input" id="sa-f-deployUrl" placeholder="Not needed for new institutes" type="url">
+      <div class="sa-form-hint">Only used by institutes still on the old per-Sheet system</div>
+    </div>
+
+    <div class="sa-form-section" style="margin-top:20px;">Plan & Access</div>
+    <div class="sa-form-row">
+      <div class="sa-form-group">
+        <label class="sa-form-label">Plan</label>
+        <select class="sa-form-input" id="sa-f-plan" onchange="onPlanChange()">
+          <option value="trial">Trial (30 days)</option>
+          <option value="basic">Basic — up to 30 students</option>
+          <option value="standard">Standard — up to 100 students</option>
+          <option value="pro">Pro — unlimited</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="sa-form-group">
+        <label class="sa-form-label">Expiry Date</label>
+        <input class="sa-form-input" id="sa-f-expiryDate" type="date">
+      </div>
+    </div>
+    <div class="sa-form-row">
+      <div class="sa-form-group">
+        <label class="sa-form-label">Status</label>
+        <select class="sa-form-input" id="sa-f-status">
+          <option value="active">✅ Active</option>
+          <option value="trial">🔵 Trial</option>
+          <option value="suspended">⏸ Suspended</option>
+          <option value="expired">❌ Expired</option>
+        </select>
+      </div>
+      <div class="sa-form-group">
+        <label class="sa-form-label">Max Students (override)</label>
+        <input class="sa-form-input" id="sa-f-studentsMax" type="number" placeholder="30">
+      </div>
+    </div>
+
+    <div class="sa-form-section" style="margin-top:20px;">Features Enabled</div>
+    <div class="sa-features-grid">
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-attendance" checked><span class="sa-feat-icon">📅</span><div><div class="sa-feat-label">Attendance</div><div class="sa-feat-desc">Daily attendance marking</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-fees" checked><span class="sa-feat-icon">💰</span><div><div class="sa-feat-label">Fee Management</div><div class="sa-feat-desc">Collect & track fees</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-progress" checked><span class="sa-feat-icon">📈</span><div><div class="sa-feat-label">Progress Tracking</div><div class="sa-feat-desc">Puzzle level progress</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-whatsapp" checked><span class="sa-feat-icon">📲</span><div><div class="sa-feat-label">WhatsApp Alerts</div><div class="sa-feat-desc">Reminders & receipts</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-reports" checked><span class="sa-feat-icon">📊</span><div><div class="sa-feat-label">Reports</div><div class="sa-feat-desc">Attendance & fee reports</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-portal" checked><span class="sa-feat-icon">👨‍👩‍👦</span><div><div class="sa-feat-label">Parent Portal</div><div class="sa-feat-desc">Parent login & progress view</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-members"><span class="sa-feat-icon">👥</span><div><div class="sa-feat-label">Multi-Member</div><div class="sa-feat-desc">Multiple staff with roles</div></div></label>
+      <label class="sa-feat-item"><input type="checkbox" id="sa-feat-pwa"><span class="sa-feat-icon">📱</span><div><div class="sa-feat-label">PWA / Install</div><div class="sa-feat-desc">Install as app on phone</div></div></label>
+    </div>
+
+    <div class="sa-form-group" style="margin-top:16px;">
+      <label class="sa-form-label">Internal Notes</label>
+      <input class="sa-form-input" id="sa-f-notes" placeholder="e.g. Referred by Srinivas, Hyderabad. Pays via UPI.">
+    </div>
+
+    <div id="sa-modalErr" style="font-size:12px;color:var(--red);margin-top:4px;display:none;"></div>
+    <div class="sa-modal-footer">
+      <button class="sa-btn sa-btn-ghost" onclick="closeSAModal()">Cancel</button>
+      <button class="sa-btn sa-btn-ghost" onclick="openWAPreview()" id="sa-waPreviewBtn" style="display:none;">📲 Preview Welcome WA</button>
+      <button class="sa-btn sa-btn-primary" id="sa-modalSaveBtn" onclick="saveInstitute()">Add Institute</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL DRAWER ══ -->
+<div id="sa-detailDrawer">
+  <div class="sa-drawer-header">
+    <div>
+      <div style="font-weight:700;font-size:15px;" id="sa-drawerName">—</div>
+      <div style="font-size:11px;color:var(--muted);font-family:monospace;" id="sa-drawerId">—</div>
+    </div>
+    <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="closeDrawer()">✕ Close</button>
+  </div>
+  <div class="sa-drawer-body" id="sa-drawerBody"></div>
+</div>
 </div>
 
 </body>
